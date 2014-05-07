@@ -27,7 +27,9 @@ values(env.stack) = getValues(env.stack)
 newproj = CRS('+proj=longlat +datum=WGS84')
 
 projection(env.stack) = newproj
-
+names(env.stack) = c('dev_hi','dev_li','flood','forh', 'form', 'grass',
+                     'pasture','ppt','rowcrop', 'shrub','tmin', 'upfor',
+                     'weth', 'wetw', 'woodland')
 return(env.stack)
 
 }
