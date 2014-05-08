@@ -16,21 +16,9 @@
 # 4. Run Background similarity test
 # 
 
-#===============================================================================
+#-------------------------------------------------------------------------------
 # Set-up
 #===============================================================================
-
-# Load libraries (not all are necessary for this analysis):
-
-library(phyloclim)
-library(raster)
-library(dismo)
-library(rJava)
-library(plyr)
-library(sp)
-library(RVAideMemoire)
-
-# Set-up:
 
 source('C:/Users/Brian/Documents/GitHub/RUBL/maxent_prep.R')
 
@@ -43,7 +31,9 @@ source('C:/Users/Brian/Documents/GitHub/RUBL/maxent_prep.R')
 
 ebird = swd.list$swd.lf.all[swd.list$swd.lf.all$sp == 0,-19]
 
-
+#-------------------------------------------------------------------------------
+# Random sample of points across flock size classes
+#===============================================================================
 # Generate a random sample of species 1 by species 2
 # Note: Species 1 is the species of interest, comparison to species 2
 
@@ -65,12 +55,9 @@ random.swd.pair = function(sp1, sp2){
     pres[,-c(19,20)]
   }
 
-head(random.swd.pair('swd.lf.all','swd.sf.all'))
-
-
 #-------------------------------------------------------------------------------
 # Model running functions
-#-------------------------------------------------------------------------------
+#===============================================================================
 
 # Function to run maxent models for niche overlap/equivalency analysis:
 
@@ -107,13 +94,10 @@ mod.run = function(sp, make.map){
     mod.list
     }
 
-
 #-------------------------------------------------------------------------------
 # Function to calculate modified Hellinger distances for a given model run
 #-------------------------------------------------------------------------------
-
-# Note: I'm using "run.e" to refer to running empirical data and "run.p" for
-# permuted data
+# This can be used for the mHd of empirical or null distributions
 
 h.dist = function(run.x, run.y){
   # Load raw probabilities:
@@ -129,6 +113,7 @@ h.dist = function(run.x, run.y){
 #-------------------------------------------------------------------------------
 # Function to calculate niche overlap about a given environmental variable
 #-------------------------------------------------------------------------------
+# This function is not complete
 
 n.overlap = function(run.x, run.y, env.var){
   # Load raw probabilities:
@@ -140,14 +125,20 @@ n.overlap = function(run.x, run.y, env.var){
   env.x
 }
 
+##################################################################################
+# SCRATCH SPACE
+##################################################################################
+head(random.swd.pair('swd.lf.all','swd.sf.all'))
 
 t1 = m.lf$outframe[,'dev_hi']
 
-tr = mod.run('swd.lf.all', 'yes')
-tr = mod.run('swd.lf.all', 'yes')
+trl = mod.run('swd.lf.all', 'yes')
+trs = mod.run('swd.sf.all', 'yes')
+tri = mod.run('swd.ind.all', 'yes')
 
-trcut = cut(tr$map.out, breaks =10)
+tri.cut = cut(tri$map.out, breaks = 50)
 
+plot(tri.cut)
 tr2 = tr$map.out-
 
 ####################################
