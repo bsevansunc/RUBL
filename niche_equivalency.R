@@ -1,49 +1,31 @@
 ################################################################################
-# Niche equivalency and background test
+# Niche equivalency and predicted niche occupancy tests
 ################################################################################
 # Author: Brian S Evans
 # Updated: 5/6/2014
 #
 # This script is used to evaluate the question: Do small/large flocks occupy the
 # same environmental niche (habitat) as birds not associated with flocks? The
-# script runs the niche equivalency test as described
-# by Warren et al. 2008 (see ?niche.equivalency.test for citation).
+# script runs the niche equivalency test as described by Warren et al. 2008
+# (see ?niche.equivalency.test in the package phyloclim for citation) and the
+# predicted niche occupancy about a given environmental variable as described 
+# by Evans et al. 2009 (see ?pno in the package phyloclim for citation)
 # 
-# Steps:
-# 1. Load RUBL point data
-# 2. Load environmental stack
-# 3. Run Niche equivalency test 
-# 4. Run Background similarity test
 # 
-
-#===============================================================================
+#-------------------------------------------------------------------------------
 # Set-up
 #===============================================================================
 
-# Load libraries (not all are necessary for this analysis):
-
-library(phyloclim)
-library(raster)
-library(dismo)
-library(rJava)
-library(plyr)
-library(sp)
-library(RVAideMemoire)
-
-# Set-up:
-
 source('C:/Users/Brian/Documents/GitHub/RUBL/maxent_prep.R')
-
-#-------------------------------------------------------------------------------
-# Get data
-#-------------------------------------------------------------------------------
 
 # Gather eBird background points (same regardless of species group):
 # Note: "-19" removes the k-fold column, which will not be used here.
 
 ebird = swd.list$swd.lf.all[swd.list$swd.lf.all$sp == 0,-19]
 
-
+#-------------------------------------------------------------------------------
+# Random sample of points across flock size classes
+#===============================================================================
 # Generate a random sample of species 1 by species 2
 # Note: Species 1 is the species of interest, comparison to species 2
 
@@ -55,7 +37,7 @@ random.swd.pair = function(sp1, sp2){
       s2 = s2[s2$sp == 1,]
   # Combine into one file:
     pres = rbind(s1,s2)
-  # Determine the proportion of species 1:
+  # Determine the sample size as the proportion of species 1:
     prob.s1 = length(s1[,1])/length(pres[,1])
   # Generate random value of 1 or 0 with the probability of obtaining
   # a 1 related to the # of s1 observations:
@@ -65,16 +47,15 @@ random.swd.pair = function(sp1, sp2){
     pres[,-c(19,20)]
   }
 
-head(random.swd.pair('swd.lf.all','swd.sf.all'))
-
-
 #-------------------------------------------------------------------------------
-# Model running functions
+# Niche equivalency analysis
+#===============================================================================
+
+
+# Function to run maxent models for niche equivalency analysis:
 #-------------------------------------------------------------------------------
 
-# Function to run maxent models for niche overlap/equivalency analysis:
-
-mod.run = function(sp, make.map){
+mod.run = function(sp){
   # Get presence data (the if statement determines whether you pull the real 
   # data or a permutation of the data):
   if (length(sp) == 1) 
@@ -98,37 +79,114 @@ mod.run = function(sp, make.map){
   # Predict model values:
       max.in$predictions = predict(mod, env, args = c('outputformat=raw'))
       max.in
-  # If "make.map" is specified (yes), make a map:
-      if (make.map == 'yes') map.out = predict(mod, env.stack, args = c('outputformat=raw'))
-        else map.out = 'NULL'
-  # Create list of model, evaluation object, and predicted values:
-    mod.list = list(mod, eval, max.in, map.out)
-      names(mod.list) = c('mod','eval','outframe', 'map.out')
-    mod.list
+  # Create output map:
+      map.out = predict(mod, env.stack, args = c('outputformat=raw'))
+      return(map.out)
     }
-
 
 #-------------------------------------------------------------------------------
 # Function to calculate modified Hellinger distances for a given model run
 #-------------------------------------------------------------------------------
+# This can be used to calculate modified Hellinger distances of empirical or
+# null distributions (based on randomization).
 
-# Note: I'm using "run.e" to refer to running empirical data and "run.p" for
-# permuted data
-
-h.dist = function(run.x, run.y){
+I.dist = function(run.x, run.y){
   # Load raw probabilities:
-    p.x = run.x$outframe$predictions
-    p.y = run.y$outframe$predictions
+    p.x = run.x$map.out
+    p.y = run.y$map.out
   # Calculate the Hellinger distance (Warren 2008, pg. 2870, EQ 2)
-    h = sqrt(sum((sqrt(p.x)-sqrt(p.y))^2))
+    h1 = (sqrt(p.x)-sqrt(p.y))^2
+    h2 = cellStats(h1,'sum')
+    h = sqrt(h2)
   # Calculate the modified Hellinger distance (pg. 2870, EQ 3)
     I = 1 -.5*h
     return(I)
 }
 
+null.I = function(species1, species2){
+  mod1 = mod.run(c(species1, species2))
+  mod2 = mod.run(c(species2, species1))
+  I.dist(mod1, mod2)
+}
+
+
 #-------------------------------------------------------------------------------
-# Function to calculate niche overlap about a given environmental variable
+# Function to run niche equivalency analyses on two flock size classes
 #-------------------------------------------------------------------------------
+# This function generates a list of two elements, slot1 contains the modified-H
+# distance (I) of the empirical data and slot2 contains the modified-H of the
+# null distribution.
+
+run.nea = function(sp1, sp2){
+  I.empirical = I.dist(mod.run(sp1), mod.run(sp2))
+  I.null = numeric()
+  for (i in 1:100){
+    I.null[i] = null.I(sp1,sp2)
+  }
+  nea.list = list(I.empirical, I.null)
+  names(nea.list) = c('I.empirical','I.null')
+}
+
+
+#-------------------------------------------------------------------------------
+# Run niche equivalency analyses
+#-------------------------------------------------------------------------------
+
+# Large flock vs. small flock:
+
+I.lf.sf = run.nea('swd.lf.all','swd.sf.all')
+
+# Large flock vs. individual sightings (<20 individuals):
+
+I.lf.ind = run.nea('swd.lf.all','swd.ind.all')
+
+# Small flock vs. individual sightings (<20 individuals):
+
+I.sf.ind = run.nea('swd.sf.all','swd.ind.all')
+
+
+#-------------------------------------------------------------------------------
+# Stats for niche equivalency analyses
+#-------------------------------------------------------------------------------
+null.dist = I.lf.sf.null
+emp.dist = I.lf.sf
+
+ci = function(null.dist){
+  x = mean(null.dist)
+  error = qnorm(.975)*sd(null.dist)/sqrt(length(null.dist))
+  ci.frame = data.frame(x-error,x+error)
+  names(ci.frame) = c('lower.ci','upper.ci')
+  ci.frame
+}
+
+null.ci = ci(null.dist)
+dens.null = density(null.dist)
+dn = data.frame(dens.null$x,dens.null$y)
+  colnames(dn) = c('x','y')
+dn = dn[dn$x>=ci.frame$lower.ci&dn$x<ci.frame$upper.ci,]
+
+hist(null.dist, freq = F, col = 'white',border = 'white', xlim = c(0,1))
+lines(density(null.dist), lwd = 1.5)
+abline(v = I.lf.sf, lty = 2, lwd = 2)
+
+lines(c(max(dn$x),max(dn$x)),c(0,dn[dn$x == max(dn$x),]$y), lty =3)
+lines(c(min(dn$x),min(dn$x)),c(0,dn[dn$x == min(dn$x),]$y), lty =3)
+
+pval = sum(null.dist >= emp.dist)/ length(null.dist)
+
+
+abline(v = min(dn$x), lty =3)
+
+polygon(c(dn$x,dn$x),c(rep(0,length(dn$y)),dn$y),col = "grey90", border = NA)
+
+#-------------------------------------------------------------------------------
+# Predicted niche overlap
+#===============================================================================
+
+mod.stack = stack(run.mod('swd.lf.all'), run.mod('swd.sf.all'))
+
+pno(env.stack[['tmin']], mod.stack)
+# This function is not complete
 
 n.overlap = function(run.x, run.y, env.var){
   # Load raw probabilities:
@@ -140,14 +198,20 @@ n.overlap = function(run.x, run.y, env.var){
   env.x
 }
 
+##################################################################################
+# SCRATCH SPACE
+##################################################################################
+head(random.swd.pair('swd.lf.all','swd.sf.all'))
 
 t1 = m.lf$outframe[,'dev_hi']
 
-tr = mod.run('swd.lf.all', 'yes')
-tr = mod.run('swd.lf.all', 'yes')
+trl = mod.run('swd.lf.all', 'yes')
+trs = mod.run('swd.sf.all', 'yes')
+tri = mod.run('swd.ind.all', 'yes')
 
-trcut = cut(tr$map.out, breaks =10)
+tri.cut = cut(tri$map.out, breaks = 50)
 
+plot(tri.cut)
 tr2 = tr$map.out-
 
 ####################################
