@@ -11,7 +11,6 @@
 # predicted niche occupancy about a given environmental variable as described 
 # by Evans et al. 2009 (see ?pno in the package phyloclim for citation)
 # 
-# 
 #-------------------------------------------------------------------------------
 # Set-up
 #===============================================================================
@@ -31,26 +30,25 @@ ebird = swd.list$swd.lf.all[swd.list$swd.lf.all$sp == 0,-19]
 
 random.swd.pair = function(sp1, sp2){
   # Get species data:
-    s1 = swd.list[[sp1]]
-      s1 = s1[s1$sp == 1,]
-    s2 = swd.list[[sp2]]
-      s2 = s2[s2$sp == 1,]
+  s1 = swd.list[[sp1]]
+  s1 = s1[s1$sp == 1,]
+  s2 = swd.list[[sp2]]
+  s2 = s2[s2$sp == 1,]
   # Combine into one file:
-    pres = rbind(s1,s2)
+  pres = rbind(s1,s2)
   # Determine the sample size as the proportion of species 1:
-    prob.s1 = length(s1[,1])/length(pres[,1])
+  prob.s1 = length(s1[,1])/length(pres[,1])
   # Generate random value of 1 or 0 with the probability of obtaining
   # a 1 related to the # of s1 observations:
-    pres$s.rand = rbinom(length(pres[,1]),1,prob.s1)
+  pres$s.rand = rbinom(length(pres[,1]),1,prob.s1)
   # Select species randomly assigned as "1" and remove "s.rand" and k
-    pres = pres[pres$s.rand == 1,]
-    pres[,-c(19,20)]
-  }
+  pres = pres[pres$s.rand == 1,]
+  pres[,-c(19,20)]
+}
 
 #-------------------------------------------------------------------------------
 # Niche equivalency analysis
 #===============================================================================
-
 
 # Function to run maxent models for niche equivalency analysis:
 #-------------------------------------------------------------------------------
@@ -60,29 +58,24 @@ mod.run = function(sp){
   # data or a permutation of the data):
   if (length(sp) == 1) 
     pres = swd.list[[sp]][,-c(19,20)]
-    else
+  else
     pres = random.swd.pair(sp[1],sp[2])
   # Combine with background ("ebird") data:
-    max.in = rbind(pres,ebird)
-    env = max.in[,-c(1:3)]
-    pa = max.in[,1]
+  max.in = rbind(pres,ebird)
+  env = max.in[,-c(1:3)]
+  pa = max.in[,1]
   # Set model arguments
-    mod.args = c('nothreshold', 'nohinge', 'noproduct','noquadratic',
+  mod.args = c('nothreshold', 'nohinge', 'noproduct','noquadratic',
                'addallsamplestobackground',
                'writebackgroundpredictions','writeplotdata',
                'noautofeature','nooutputgrids',
                'maximumiterations=10000', 'verbose')
   # Run maxent model with training and background data:
-      mod = maxent(env, pa, args = mod.args)
-  # Create a model evaluation object:
-      eval = evaluate(pres[,-c(1:3)], a = ebird[,-c(1:3)],model = mod)
-  # Predict model values:
-      max.in$predictions = predict(mod, env, args = c('outputformat=raw'))
-      max.in
+  mod = maxent(env, pa, args = mod.args)
   # Create output map:
-      map.out = predict(mod, env.stack, args = c('outputformat=raw'))
-      return(map.out)
-    }
+  map.out = predict(mod, env.stack, args = c('outputformat=raw'))
+  return(map.out)
+}
 
 #-------------------------------------------------------------------------------
 # Function to calculate modified Hellinger distances for a given model run
@@ -92,15 +85,15 @@ mod.run = function(sp){
 
 I.dist = function(run.x, run.y){
   # Load raw probabilities:
-    p.x = run.x$map.out
-    p.y = run.y$map.out
+  p.x = run.x$map.out
+  p.y = run.y$map.out
   # Calculate the Hellinger distance (Warren 2008, pg. 2870, EQ 2)
-    h1 = (sqrt(p.x)-sqrt(p.y))^2
-    h2 = cellStats(h1,'sum')
-    h = sqrt(h2)
+  h1 = (sqrt(p.x)-sqrt(p.y))^2
+  h2 = cellStats(h1,'sum')
+  h = sqrt(h2)
   # Calculate the modified Hellinger distance (pg. 2870, EQ 3)
-    I = 1 -.5*h
-    return(I)
+  I = 1 -.5*h
+  return(I)
 }
 
 null.I = function(species1, species2){
@@ -108,7 +101,6 @@ null.I = function(species1, species2){
   mod2 = mod.run(c(species2, species1))
   I.dist(mod1, mod2)
 }
-
 
 #-------------------------------------------------------------------------------
 # Function to run niche equivalency analyses on two flock size classes
@@ -125,8 +117,8 @@ run.nea = function(sp1, sp2){
   }
   nea.list = list(I.empirical, I.null)
   names(nea.list) = c('I.empirical','I.null')
+  nea.list
 }
-
 
 #-------------------------------------------------------------------------------
 # Run niche equivalency analyses
@@ -144,190 +136,107 @@ I.lf.ind = run.nea('swd.lf.all','swd.ind.all')
 
 I.sf.ind = run.nea('swd.sf.all','swd.ind.all')
 
-
 #-------------------------------------------------------------------------------
 # Stats for niche equivalency analyses
 #-------------------------------------------------------------------------------
-null.dist = I.lf.sf.null
-emp.dist = I.lf.sf
 
-ci = function(null.dist){
-  x = mean(null.dist)
-  error = qnorm(.975)*sd(null.dist)/sqrt(length(null.dist))
-  ci.frame = data.frame(x-error,x+error)
-  names(ci.frame) = c('lower.ci','upper.ci')
-  ci.frame
-}
+###############################
+# LARGE FLOCK VS. SMALL FLOCK:
+###############################
 
-null.ci = ci(null.dist)
-dens.null = density(null.dist)
-dn = data.frame(dens.null$x,dens.null$y)
-  colnames(dn) = c('x','y')
-dn = dn[dn$x>=ci.frame$lower.ci&dn$x<ci.frame$upper.ci,]
+# Test ins:
+null.dist.lf.sf = I.lf.sf[[2]]
+emp.dist.lf.sf = I.lf.sf[[1]]
 
-hist(null.dist, freq = F, col = 'white',border = 'white', xlim = c(0,1))
-lines(density(null.dist), lwd = 1.5)
-abline(v = I.lf.sf, lty = 2, lwd = 2)
+# Determine the percentile associated with the empirical modified-H:
 
-lines(c(max(dn$x),max(dn$x)),c(0,dn[dn$x == max(dn$x),]$y), lty =3)
-lines(c(min(dn$x),min(dn$x)),c(0,dn[dn$x == min(dn$x),]$y), lty =3)
+percentile = ecdf(null.dist.lf.sf)(emp.dist.lf.sf)
 
-pval = sum(null.dist >= emp.dist)/ length(null.dist)
+quantile(null.dist.lf.sf, probs = 0.05)
 
+quantile(null.dist.lf.sf, probs = 0.1)
 
-abline(v = min(dn$x), lty =3)
+ecdf(null.dist.lf.sf)(emp.dist.lf.sf)
 
-polygon(c(dn$x,dn$x),c(rep(0,length(dn$y)),dn$y),col = "grey90", border = NA)
+# Plot the data:
+
+hist(null.dist.lf.sf, xlim = c(0,1), freq = F,
+     col = 'gray80', cex.lab = 1.25,
+     main = 'Large flock vs. individual sightings',
+     xlab = 'Modified-Hellinger distance (I)')
+abline(v = emp.dist.lf.sf, lwd = 2, lty = 2)
+lines(density(null.dist.lf.sf), lwd = 2)
+
+###############################
+# LARGE FLOCK VS. INDIVIDUALS:
+###############################
+
+# Test ins:
+null.dist.lf.ind = I.lf.ind[[2]]
+emp.dist.lf.ind = I.lf.ind[[1]]
+
+# Determine the percentile associated with the empirical modified-H:
+
+percentile = ecdf(null.dist.lf.ind)(emp.dist.lf.ind)
+
+quantile(null.dist.lf.ind, probs = 0.05)
+
+quantile(null.dist.lf.ind, probs = 0.1)
+
+ecdf(null.dist.lf.ind)(emp.dist.lf.ind)
+
+# Plot the data:
+
+hist(null.dist.lf.ind, xlim = c(0,1), freq = F,
+     col = 'gray80', cex.lab = 1.25,
+     main = 'Large flock vs. individual sightings',
+     xlab = 'Modified-Hellinger distance (I)')
+    abline(v = emp.dist.lf.ind, lwd = 2, lty = 2)
+    lines(density(null.dist.lf.ind), lwd = 2)
+
+###############################
+# SMALL FLOCK VS. SMALL FLOCK:
+###############################
+
+# Test ins:
+null.dist.sf.ind = I.sf.ind[[2]]
+emp.dist.sf.ind = I.sf.ind[[1]]
+
+# Determine the percentile associated with the empirical modified-H:
+
+percentile = ecdf(null.dist.sf.ind)(emp.dist.sf.ind)
+
+quantile(null.dist.sf.ind, probs = 0.05)
+
+quantile(null.dist.sf.ind, probs = 0.1)
+
+ecdf(null.dist.sf.ind)(emp.dist.sf.ind)
+
+# Plot the data:
+
+hist(null.dist.sf.ind, xlim = c(0,1), freq = F,
+     col = 'gray80', cex.lab = 1.25,
+     main = 'Large flock vs. individual sightings',
+     xlab = 'Modified-Hellinger distance (I)')
+abline(v = emp.dist.sf.ind, lwd = 2, lty = 2)
+lines(density(null.dist.sf.ind), lwd = 2)
 
 #-------------------------------------------------------------------------------
 # Predicted niche overlap
 #===============================================================================
+# This function is not complete
 
 mod.stack = stack(run.mod('swd.lf.all'), run.mod('swd.sf.all'))
 
 pno(env.stack[['tmin']], mod.stack)
-# This function is not complete
+
 
 n.overlap = function(run.x, run.y, env.var){
   # Load raw probabilities:
-    p.x = run.x$outframe$predictions
-    p.y = run.y$outframe$predictions
+  p.x = run.x$outframe$predictions
+  p.y = run.y$outframe$predictions
   # Load environmental variables
-    env.x = run.x$outframe[,env.var]
-    env.y = run.y$outframe[,env.var]
+  env.x = run.x$outframe[,env.var]
+  env.y = run.y$outframe[,env.var]
   env.x
 }
-
-##################################################################################
-# SCRATCH SPACE
-##################################################################################
-head(random.swd.pair('swd.lf.all','swd.sf.all'))
-
-t1 = m.lf$outframe[,'dev_hi']
-
-trl = mod.run('swd.lf.all', 'yes')
-trs = mod.run('swd.sf.all', 'yes')
-tri = mod.run('swd.ind.all', 'yes')
-
-tri.cut = cut(tri$map.out, breaks = 50)
-
-plot(tri.cut)
-tr2 = tr$map.out-
-
-####################################
-
-m.lf  = mod.run('swd.lf.all', 'no')
-m.sf  = mod.run('swd.sf.all', 'no')
-m.ind  = mod.run('swd.ind.all', 'no')
-
-
-t2 = mod.run(c('swd.sf.all','swd.lf.all'), 'no')
-
-h.dist(m.lf, m.sf)
-
-h.dist(m.lf, m.ind)
-
-h.dist(m.sf, m.ind)
-
-
-h.dist.env(m.sf,m.ind,'dev_hi')
-
-
-test = m.sf$outframe[,'environment']
-
-
-
-
-
-####### BELOW: Trying something out
-density(test)
-lines(density(test[test$sp == 0,'dev_li']),add = T, col = 'red')
-
-mean(test[[3]][test[[3]]$sp ==1,'pasture'])
-
-plot(density(test[[3]][test[[3]]$sp ==1,'pasture']))
-
-# library = sm
-
-t2 = test[[3]]
-
-sm.density.compare(t2$tmin,t2$sp, h = 0.5, xlim = c(-15,15),
-                   xlab = 'Minimum monthly temperature, deg. C',
-                   ylab = 'Density (Bandwith = 0.5)',
-                   cex.lab = 1.5, bty = 'l')
-
-mean(test[[3]][test[[3]]$sp ==0,'pasture'])
-lines(density(test[[3]][test[[3]]$sp ==0,'pasture']))
-
-
-##############################################################
-
-
-#######################################################################################
-
-# Compare the distribution about a given environemntal variable
-
-
-
-test = random.swd.pair('swd.lf.all','swd.sf.all')
-summary(random.swd.pair('swd.lf.all','swd.sf.all')[['tmin']])
-
-
-lf = swd.list[['swd.lf.all']]
-lf = lf[lf$sp == 1,]
-
-test
-
-# Make a new data frame with presence points and names for each flock size:
-
-head(swd.list$swd.lf.all)
-
-extract.pts.sp = function(data.sub, flock.size){
-  dsub = swd.list[[data.sub]]
-  if (flock.size!= 'bg') sp.num = 1 else sp.num = 0
-  dframe = dsub[dsub$sp == sp.num,]
-  dframe$sp = rep(flock.size,dim(dframe)[1])
-  dframe
-}
-
-lf = extract.pts.sp('swd.lf.all','lf')
-sf = extract.pts.sp('swd.sf.all','sf')
-ind = extract.pts.sp('swd.ind.all','ind')
-
-# Combine files:
-
-pts = rbind(lf,sf,ind, ebird)[,1:3]
-
-pts[,1] = as.factor(pts[,1])
-
-colnames(pts) = c('spec','long','lat')
-
-pts.lf.sf = pts[pts$sp == 'sf'|pts$sp == 'lf',]
-
-# Convert to a spatial points data frame:
-
-pts = SpatialPointsDataFrame(pts[,2:3],pts[1])
-
-#
-#===============================================================================
-# Run hypothesis tests
-#===============================================================================
-
-# Set the number of permutations of the data:
-
-reps = 9
-
-# Run niche equivalency test:
-
-test = maxent(env.stack, pts.lf.sf[,2:3])
-
-net = niche.equivalency.test(pts.lf.sf, env.stack, maxent.exe)
-
-net
-plot(net)
-
-
-bst = bg.similarity.test(samples, preds, reps, app = maxent.exe)
-
-bst
-plot(bst)
