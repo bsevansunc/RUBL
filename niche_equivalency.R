@@ -12,6 +12,10 @@
 # by Evans et al. 2009 (see ?pno in the package phyloclim for citation)
 # 
 # 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 18ff21612a26037285ea03a547276c395b4b8d9e
 #-------------------------------------------------------------------------------
 # Set-up
 #===============================================================================
@@ -48,12 +52,17 @@ random.swd.pair = function(sp1, sp2){
   }
 
 #-------------------------------------------------------------------------------
+<<<<<<< HEAD
 # Niche equivalency analysis
 #===============================================================================
 
 
 # Function to run maxent models for niche equivalency analysis:
 #-------------------------------------------------------------------------------
+=======
+# Model running functions
+#===============================================================================
+>>>>>>> 18ff21612a26037285ea03a547276c395b4b8d9e
 
 mod.run = function(sp){
   # Get presence data (the if statement determines whether you pull the real 
@@ -87,10 +96,16 @@ mod.run = function(sp){
 #-------------------------------------------------------------------------------
 # Function to calculate modified Hellinger distances for a given model run
 #-------------------------------------------------------------------------------
+<<<<<<< HEAD
 # This can be used to calculate modified Hellinger distances of empirical or
 # null distributions (based on randomization).
 
 I.dist = function(run.x, run.y){
+=======
+# This can be used for the mHd of empirical or null distributions
+
+h.dist = function(run.x, run.y){
+>>>>>>> 18ff21612a26037285ea03a547276c395b4b8d9e
   # Load raw probabilities:
     p.x = run.x$map.out
     p.y = run.y$map.out
@@ -148,6 +163,7 @@ I.sf.ind = run.nea('swd.sf.all','swd.ind.all')
 #-------------------------------------------------------------------------------
 # Stats for niche equivalency analyses
 #-------------------------------------------------------------------------------
+<<<<<<< HEAD
 null.dist = I.lf.sf.null
 emp.dist = I.lf.sf
 
@@ -186,6 +202,8 @@ polygon(c(dn$x,dn$x),c(rep(0,length(dn$y)),dn$y),col = "grey90", border = NA)
 mod.stack = stack(run.mod('swd.lf.all'), run.mod('swd.sf.all'))
 
 pno(env.stack[['tmin']], mod.stack)
+=======
+>>>>>>> 18ff21612a26037285ea03a547276c395b4b8d9e
 # This function is not complete
 
 n.overlap = function(run.x, run.y, env.var){
