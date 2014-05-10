@@ -1,5 +1,5 @@
 ################################################################################
-# Niche equivalency and predicted niche occupancy tests
+# Niche equivalency test
 ################################################################################
 # Author: Brian S Evans
 # Updated: 5/6/2014
@@ -10,6 +10,7 @@
 # (see ?niche.equivalency.test in the package phyloclim for citation) and the
 # predicted niche occupancy about a given environmental variable as described 
 # by Evans et al. 2009 (see ?pno in the package phyloclim for citation)
+# 
 # 
 #-------------------------------------------------------------------------------
 # Set-up
@@ -50,6 +51,7 @@ random.swd.pair = function(sp1, sp2){
 # Niche equivalency analysis
 #===============================================================================
 
+
 # Function to run maxent models for niche equivalency analysis:
 #-------------------------------------------------------------------------------
 
@@ -72,6 +74,11 @@ mod.run = function(sp){
                'maximumiterations=10000', 'verbose')
   # Run maxent model with training and background data:
   mod = maxent(env, pa, args = mod.args)
+  # Create a model evaluation object:
+  eval = evaluate(pres[,-c(1:3)], a = ebird[,-c(1:3)],model = mod)
+  # Predict model values:
+  max.in$predictions = predict(mod, env, args = c('outputformat=raw'))
+  max.in
   # Create output map:
   map.out = predict(mod, env.stack, args = c('outputformat=raw'))
   return(map.out)
@@ -102,6 +109,7 @@ null.I = function(species1, species2){
   I.dist(mod1, mod2)
 }
 
+
 #-------------------------------------------------------------------------------
 # Function to run niche equivalency analyses on two flock size classes
 #-------------------------------------------------------------------------------
@@ -117,8 +125,8 @@ run.nea = function(sp1, sp2){
   }
   nea.list = list(I.empirical, I.null)
   names(nea.list) = c('I.empirical','I.null')
-  nea.list
 }
+
 
 #-------------------------------------------------------------------------------
 # Run niche equivalency analyses
@@ -138,105 +146,114 @@ I.sf.ind = run.nea('swd.sf.all','swd.ind.all')
 
 #-------------------------------------------------------------------------------
 # Stats for niche equivalency analyses
-#-------------------------------------------------------------------------------
+#===============================================================================
 
 ###############################
 # LARGE FLOCK VS. SMALL FLOCK:
 ###############################
 
 # Test ins:
+
 null.dist.lf.sf = I.lf.sf[[2]]
 emp.dist.lf.sf = I.lf.sf[[1]]
 
+# Summary stats:
+
+emp.dist.lf.sf
+mean(null.dist.lf.sf)
+se(null.dist.lf.sf)
+
 # Determine the percentile associated with the empirical modified-H:
 
-percentile = ecdf(null.dist.lf.sf)(emp.dist.lf.sf)
-
 quantile(null.dist.lf.sf, probs = 0.05)
-
 quantile(null.dist.lf.sf, probs = 0.1)
-
 ecdf(null.dist.lf.sf)(emp.dist.lf.sf)
-
-# Plot the data:
-
-hist(null.dist.lf.sf, xlim = c(0,1), freq = F,
-     col = 'gray80', cex.lab = 1.25,
-     main = 'Large flock vs. individual sightings',
-     xlab = 'Modified-Hellinger distance (I)')
-abline(v = emp.dist.lf.sf, lwd = 2, lty = 2)
-lines(density(null.dist.lf.sf), lwd = 2)
 
 ###############################
 # LARGE FLOCK VS. INDIVIDUALS:
 ###############################
 
 # Test ins:
+
 null.dist.lf.ind = I.lf.ind[[2]]
 emp.dist.lf.ind = I.lf.ind[[1]]
 
+# Summary stats:
+
+emp.dist.lf.ind
+mean(null.dist.lf.ind)
+se(null.dist.lf.ind)
+
 # Determine the percentile associated with the empirical modified-H:
 
-percentile = ecdf(null.dist.lf.ind)(emp.dist.lf.ind)
-
 quantile(null.dist.lf.ind, probs = 0.05)
-
 quantile(null.dist.lf.ind, probs = 0.1)
-
 ecdf(null.dist.lf.ind)(emp.dist.lf.ind)
 
-# Plot the data:
-
-hist(null.dist.lf.ind, xlim = c(0,1), freq = F,
-     col = 'gray80', cex.lab = 1.25,
-     main = 'Large flock vs. individual sightings',
-     xlab = 'Modified-Hellinger distance (I)')
-    abline(v = emp.dist.lf.ind, lwd = 2, lty = 2)
-    lines(density(null.dist.lf.ind), lwd = 2)
-
 ###############################
-# SMALL FLOCK VS. SMALL FLOCK:
+# SMALL FLOCK VS. INDIVIDUAL:
 ###############################
 
 # Test ins:
 null.dist.sf.ind = I.sf.ind[[2]]
 emp.dist.sf.ind = I.sf.ind[[1]]
 
+# Summary stats:
+
+emp.dist.sf.ind
+mean(null.dist.sf.ind)
+se(null.dist.sf.ind)
+
 # Determine the percentile associated with the empirical modified-H:
 
-percentile = ecdf(null.dist.sf.ind)(emp.dist.sf.ind)
-
 quantile(null.dist.sf.ind, probs = 0.05)
-
 quantile(null.dist.sf.ind, probs = 0.1)
-
 ecdf(null.dist.sf.ind)(emp.dist.sf.ind)
 
-# Plot the data:
+#-------------------------------------------------------------------------------
+# Plot the histograms
+#===============================================================================
 
-hist(null.dist.sf.ind, xlim = c(0,1), freq = F,
+setwd('C:/Users/Brian/Documents/rubl_out')
+
+# Modified-Hellinger distance, large and small flocks:
+
+plot.new()
+jpeg('mh_dist_lf_sf.jpg', 1200,1200,res = 300)
+
+hist(null.dist.lf.sf, xlim = c(0,1), ylim = c(0,10), freq = F,
+     col = 'gray80', cex.lab = 1.25,
+     main = 'Large vs.small flock sightings',
+     xlab = 'Modified-Hellinger distance (I)')
+  lines(c(emp.dist.lf.sf, emp.dist.lf.sf), c(0,9.5), lwd = 2, lty = 2)
+  legend(.02,10,'Null distance','gray80',1, bty = 'n',x.intersp = .95, cex = .7)
+  legend(0,9,'Actual distance',lty = 2,bty = 'n', x.intersp = .4, cex = .7)
+
+dev.off()
+
+# Modified-Hellinger distance, large flocks and individual sightings:
+
+plot.new()
+jpeg('mh_dist_lf_ind.jpg',1200,1200,res = 300)
+
+hist(null.dist.lf.ind, xlim = c(0,1), ylim = c(0,10),freq = F,
      col = 'gray80', cex.lab = 1.25,
      main = 'Large flock vs. individual sightings',
      xlab = 'Modified-Hellinger distance (I)')
-abline(v = emp.dist.sf.ind, lwd = 2, lty = 2)
-lines(density(null.dist.sf.ind), lwd = 2)
+  lines(c(emp.dist.lf.ind, emp.dist.lf.ind), c(0,10), lwd = 2, lty = 2)
 
-#-------------------------------------------------------------------------------
-# Predicted niche overlap
-#===============================================================================
-# This function is not complete
+dev.off()
 
-mod.stack = stack(run.mod('swd.lf.all'), run.mod('swd.sf.all'))
-
-pno(env.stack[['tmin']], mod.stack)
+# Modified-Hellinger distance, small flocks and individual sightings:
 
 
-n.overlap = function(run.x, run.y, env.var){
-  # Load raw probabilities:
-  p.x = run.x$outframe$predictions
-  p.y = run.y$outframe$predictions
-  # Load environmental variables
-  env.x = run.x$outframe[,env.var]
-  env.y = run.y$outframe[,env.var]
-  env.x
-}
+plot.new()
+jpeg('mh_dist_sf_ind.jpg',1200,1200,res = 300)
+
+hist(null.dist.sf.ind, xlim = c(0,1), freq = F,
+     col = 'gray80', cex.lab = 1.25,
+     main = 'Small flock vs. individual sightings',
+     xlab = 'Modified-Hellinger distance (I)')
+lines(c(emp.dist.sf.ind, emp.dist.sf.ind), c(0,10), lwd = 2, lty = 2)
+
+dev.off()
