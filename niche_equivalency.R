@@ -11,7 +11,6 @@
 # predicted niche occupancy about a given environmental variable as described 
 # by Evans et al. 2009 (see ?pno in the package phyloclim for citation)
 # 
-# 
 #-------------------------------------------------------------------------------
 # Set-up
 #===============================================================================
