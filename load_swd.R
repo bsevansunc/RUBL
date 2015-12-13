@@ -10,8 +10,8 @@
 load.swd = function(){
 # Find the SWD data (searches for and ID's all files that end in ".csv":
 
-swd_data <- list.files('C:/Users/Brian/Desktop/rubl_2_14/swd',
-                          pattern='\\.csv$', full=T)  
+swd_data <- list.files('C:/Users/Brian/Dropbox/rubl_12_15/swd',
+                          pattern='\\.csv$', full=T)
 
 # Add data to memory:
 
