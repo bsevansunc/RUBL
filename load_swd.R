@@ -24,6 +24,13 @@ pts.bg = swd.list[[2]]
 pts.bz = swd.list[[3]]
 pts.eb = swd.list[[4]]
 
+# Some fixes on the background points:
+library(dplyr)
+
+pts.bg <- pts.bg %>% dplyr::select(-c(ID:woodland.1)) %>%
+  dplyr::mutate(sp = 'bg') %>%
+  dplyr::select(sp, lon:woodland)
+
 #-------------------------------------------------------------------------------
 # Prepare swd files for model running
 #-------------------------------------------------------------------------------
@@ -35,8 +42,9 @@ pts.eb = swd.list[[4]]
 
 swd.prep = function(swd.file, flock.size){
   swd = swd.file[swd.file$sp == flock.size,] # Subset by flock
-  swd$sp = if (flock.size == 'bg') rep(0, length(swd$sp))
-  else (rep(1, length(swd$sp))) # Adds counts
+  swd$sp = if (flock.size == 'bg'){rep(0, length(swd$sp))
+    } else {
+      (rep(1, length(swd$sp)))} # Adds counts
   swd$k = kfold(swd, k=5) # Adds kfold partition ID
   swd
 }
