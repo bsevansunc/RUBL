@@ -11,7 +11,7 @@
 load.env = function(){
 # Find the raster data (searches for and ID's all files that end in ".asc":
 
-raster_data <- list.files('C:/Users/Brian/Dropbox/rubl_12_15',
+raster_data <- list.files('C:/Users/Brian/Dropbox/rubl_12_15/lc_asc',
                           pattern='\\.asc$', full=T)    
 
 # Create a raster stack of raster layers:
