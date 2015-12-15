@@ -105,7 +105,7 @@ beta.finder = function(swd, beta.seq){
 # CALIBRATE MODELS
 #----------------------------------------------------------------------------
 
-setwd("C:/Users/Brian/Desktop/rubl_2_14/scratch_out/runs_3_23")
+setwd("C:/Users/Brian/Dropbox/rubl_12_15/scratch_out")
 
 lf.betas2 = beta.finder('swd.lf.all', seq(0,20, by = 0.5))
 sf.betas2 = beta.finder('swd.sf.all', seq(0,20, by = 0.5))

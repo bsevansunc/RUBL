@@ -89,7 +89,6 @@ sp.pts = function(swd){
   SpatialPoints(swd2[,c(2,3)])
 }
 
-
 sp.test.pres = function(swd, k){
   swd1 = swd.list[[swd]]
   test.pres = swd1[swd1$sp == 1&swd1$k == k,]
