@@ -209,11 +209,11 @@ makeLambdaContributionFrame <- function(model){
   return(outFrame)
 }
 
-makeLambdaContributionFrame(allIndOut)
+lambdaContributionFrame_allIndOut <- makeLambdaContributionFrame(allIndOut)
 
-makeLambdaContributionFrame(allSfOut)
+lambdaContributionFrame_allSfOut <- makeLambdaContributionFrame(allSfOut)
 
-makeLambdaContributionFrame(allLfOut)
+lambdaContributionFrame_allLfOut <- makeLambdaContributionFrame(allLfOut)
 
 
 df2 <- data.frame(variable = df1[,1], 
@@ -384,15 +384,15 @@ out.stats = function(I.sp1.sp2){
 
 # LARGE FLOCK VS. SMALL FLOCK:
 
-out.stats(I.lf.sf)
+outStats_I.lf.sf <- out.stats(I.lf.sf)
 
 # LARGE FLOCK VS. INDIVIDUALS:
 
-out.stats(I.lf.ind)
+outStats_I.lf.ind <- out.stats(I.lf.ind)
 
 # SMALL FLOCK VS. INDIVIDUAL:
 
-out.stats(I.sf.ind)
+outStats_I.sf.ind <- out.stats(I.sf.ind)
 
 #-------------------------------------------------------------------------------
 # Plot the histograms
@@ -405,10 +405,10 @@ out.stats(I.sf.ind)
 # Histogram function:
 
 hist.mhd = function(I.sp1.sp2,main.label,out.name, leg){
-  null.dist = outstats(I.sp1.sp2)[[2]]
-  emp.dist = outstats(I.sp1.sp2)[[1]]
+  null.dist = out.stats(I.sp1.sp2)[[2]]
+  emp.dist = out.stats(I.sp1.sp2)[[1]]
   plot.new()
-  setwd('C:/Users/Brian/Documents/GitHub/RUBL')
+  setwd('C:/Users/Brian/Dropbox/rubl_12_15/scratch_out')
   jpeg(out.name, 1200,1250, res = 300)
   hist(null.dist, breaks = seq(0,1, by = .005), freq = F,
        xlim = c(0.85,1), ylim = c(0,110),
@@ -459,10 +459,10 @@ pno.df = function(mod.x, mod.y, env.var){
 
 # Determine the modified-Hellinger similarity between two pnos:
 
-pno = function(mod.x, mod.y, env.var){
+pno.I = function(mod.x, mod.y, env.var){
   df = pno.df(mod.x, mod.y, env.var)
   # Calculate the modified-Hellinger similarity (I):
-  niche.overlap(pno.df)[2,1]
+  niche.overlap(df)[2,1]
 }
 
 
@@ -470,14 +470,14 @@ pno = function(mod.x, mod.y, env.var){
 # actual pno-I (one value) and a vector of 100 null pno-I's:
 
 run.pno = function(mod.x, mod.y, null.xy, null.yx, env.var){
-  pno.actual = pno(mod.x, mod.y, env.var)
+  #pno.actual = pno(mod.x, mod.y, env.var)
   pno.I.actual = pno.I(mod.x, mod.y, env.var)
   pno.I.null = numeric()
   for (i in 1:100){
     pno.I.null[i] = pno.I(null.xy[[i]],null.yx[[i]], env.var)
   }
-  pno.list = list(pno.actual, pno.I.actual, pno.I.null)
-  names(pno.list) = c('pno.actual','pno.I.actual','pno.I.null')
+  pno.list = list(pno.I.actual, pno.I.null) # pno.actual, 
+  names(pno.list) = c('pno.I.actual','pno.I.null') #'pno.actual',
   return(pno.list)
 }
 
@@ -545,14 +545,13 @@ pno.lf.ind[['dev_hi']][[1]][,3]
 names(env.stack)[env]
 
 plot.pno = function(env) {
-  env.name = names(env.stack[[env]])
   df = pno.lf.sf[[env]][[1]]
   ind = pno.lf.ind[[env]][[1]][,3]
   env = df[,1]
   lf = df[,2]
   sf = df[,3]
   plot(lf~env, type = 'l', xlim = c(0,1), lwd =2, bty ='l',
-       main = env.name, ylab = 'PNO')
+       main = names(env.stack[[env]]), ylab = 'PNO')
   lines(env, sf, lty = 2, lwd = 2)
   lines(env, ind, lty = 3, lwd = 2)
 }
