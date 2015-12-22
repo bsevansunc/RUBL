@@ -470,14 +470,14 @@ pno.I = function(mod.x, mod.y, env.var){
 # actual pno-I (one value) and a vector of 100 null pno-I's:
 
 run.pno = function(mod.x, mod.y, null.xy, null.yx, env.var){
-  #pno.actual = pno(mod.x, mod.y, env.var)
+  pno.actual = pno.df(mod.x, mod.y, env.var)
   pno.I.actual = pno.I(mod.x, mod.y, env.var)
   pno.I.null = numeric()
   for (i in 1:100){
     pno.I.null[i] = pno.I(null.xy[[i]],null.yx[[i]], env.var)
   }
-  pno.list = list(pno.I.actual, pno.I.null) # pno.actual, 
-  names(pno.list) = c('pno.I.actual','pno.I.null') #'pno.actual',
+  pno.list = list(pno.I.actual, pno.I.null, pno.actual) # pno.actual, 
+  names(pno.list) = c('pno.I.actual','pno.I.null','pno.actual')
   return(pno.list)
 }
 
