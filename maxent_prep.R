@@ -86,11 +86,11 @@ swd.prep = function(swd, k){
 sp.pts = function(swd){
   swd1 = swd.find(swd)
   swd2 = swd1[swd1$sp!=0,]
-  SpatialPoints(swd2[,c(2,3)])
+  SpatialPoints(swd2[,c(2,3)], proj4string = CRS(projection(env.stack)))
 }
 
 sp.test.pres = function(swd, k){
   swd1 = swd.list[[swd]]
   test.pres = swd1[swd1$sp == 1&swd1$k == k,]
-  SpatialPoints(test.pres[,c(2,3)])
+  SpatialPoints(test.pres[,c(2,3)], proj4string = CRS(projection(env.stack)))
 }
