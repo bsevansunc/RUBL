@@ -211,7 +211,7 @@ prob.r.stack = function(model, outformat){
 # Average probability surface:
 
 prob.r = function(model, outformat){
-  mean(prob.r.stack(model, outformat) 
+  mean(prob.r.stack(model, outformat))
 }
 
 #----------------------------------------------------------------------------
