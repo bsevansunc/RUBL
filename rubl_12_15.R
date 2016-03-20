@@ -1,5 +1,7 @@
 # Load environment data:
 
+library('sp') ; library('raster') ; library('dismo')
+
 source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
 
 env.stack
@@ -13,14 +15,14 @@ swdData <- list.files('C:/Users/Brian/Dropbox/rubl_12_15/swd',
 
 swdList <- lapply(swdData, read.csv)
 
-names(swd.list) <- c('all','bg','bz','eb')
+names(swdList) <- c('all','bg','bz','eb')
 
 # Assign names to each of the files:
 
-pts.all = swd.list[[1]]
-pts.bg = swd.list[[2]]
-pts.bz = swd.list[[3]]
-pts.eb = swd.list[[4]]
+pts.all = swdList[[1]]
+pts.bg = swdList[[2]]
+pts.bz = swdList[[3]]
+pts.eb = swdList[[4]]
 
 # For background points, add a 'bg' for the species column:
 library(dplyr)
@@ -166,7 +168,7 @@ maxentAcrossFolds <- function(observationClass, flockSizeClass, beta.multiplier)
 # Across data (all), flock sizes:
 
 observationClass = 'all'
-beta.multiplier = 5
+beta.multiplier = 0
 
 allIndOut <- maxentAcrossFolds(observationClass, 'ind', beta.multiplier)
 allSfOut <- maxentAcrossFolds(observationClass, 'sf', beta.multiplier)
@@ -203,7 +205,7 @@ makeLambdaContributionFrame <- function(model){
     meanContribution = apply(dfContributionMat, 1, mean),
     seContribution = apply(dfContributionMat, 1, se))
 
-  outFrame <- join(variableContributionSummary, lambdaSummary) %>%
+  outFrame <- plyr::join(variableContributionSummary, lambdaSummary) %>%
     arrange(desc(meanContribution))
   
   return(outFrame)
@@ -214,13 +216,13 @@ lambdaContributionFrame_allIndOut <- makeLambdaContributionFrame(allIndOut)
 lambdaContributionFrame_allSfOut <- makeLambdaContributionFrame(allSfOut)
 
 lambdaContributionFrame_allLfOut <- makeLambdaContributionFrame(allLfOut)
-
-
-df2 <- data.frame(variable = df1[,1], 
-                  percentContribution = apply(df1[,-1], 1, mean),
-                  standardError = apply(df1[,-1], 1, se)) %>%
-                  arrange(desc(percentContribution))
-
+# 
+# 
+# df2 <- data.frame(variable = df1[,1], 
+#                   percentContribution = apply(df1[,-1], 1, mean),
+#                   standardError = apply(df1[,-1], 1, se)) %>%
+#                   arrange(desc(percentContribution))
+# 
 
 
 prob.r.stack = function(model, outformat){
