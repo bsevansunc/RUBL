@@ -33,3 +33,5 @@ names(env.stack) = c('dev_hi','dev_li','flood','forh', 'form', 'grass',
 return(env.stack)
 
 }
+
+env.stack <- load.env()
