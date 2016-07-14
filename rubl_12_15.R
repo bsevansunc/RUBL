@@ -48,9 +48,8 @@ names(spatialPointList) <- c('all','bg','bz','eb')
 ptEnvList <- list(length = length(swdList))
 
 for(i in 1:length(swdList)){
-   envExtract<- as.data.frame(extract(env.stack, 
-                                          spatialPointList[[i]]),
-                                          na.rm = TRUE)
+   envExtract<- raster::extract(env.stack, spatialPointList[[i]]) %>%
+     as.data.frame(na.rm = TRUE)
    ptEnvList[[i]] <- cbind(dplyr::select(swdList[[i]], sp:lat),
                            envExtract)
 }
@@ -127,16 +126,16 @@ maxentEvaluate <- function(observationClass, flockSizeClass, kFold, beta.multipl
   return(list(maxentModel = maxentModel, modelEvaluation = modelEvaluation,
               swd = maxentModelOut$swd, swdTest = swdTest))
 }
-
-observationClass = 'all'
-flockSizeClass = 'lf'
-kFold = 3
-beta.multiplier = 2
-
-test <- maxentRun(observationClass, flockSizeClass, kFold, beta.multiplier)
-test
-
-mTest <- maxentEvaluate(observationClass, flockSizeClass, kFold, beta.multiplier)
+# 
+# observationClass = 'all'
+# flockSizeClass = 'lf'
+# kFold = 3
+# beta.multiplier = 2
+# 
+# test <- maxentRun(observationClass, flockSizeClass, kFold, beta.multiplier)
+# test
+# 
+# mTest <- maxentEvaluate(observationClass, flockSizeClass, kFold, beta.multiplier)
 
 # Function to run across folds:
 
