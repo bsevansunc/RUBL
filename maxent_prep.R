@@ -38,15 +38,17 @@ maxent.exe <- paste(system.file(package="dismo"),
 
 # Rasters (takes about 20 seconds to run):
 
-source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
+#source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
 
-env.stack = load.env()
+source('load_env.R')
+
+env.stack = load.env('C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/lc_asc')
 
 # Samples with data:
 
 source('C:/Users/Brian/Desktop/gits/RUBL/load_swd.R')
 
-swd.list = load.swd()
+swd.list = load.swd('C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/swd')
 
 #----------------------------------------------------------------------------
 # SWD preparation functions
