@@ -16,7 +16,7 @@
 
 # Set-up:
 
-source('C:/Users/Brian/Documents/GitHub/RUBL/maxent_prep.R')
+# source('C:/Users/Brian/Documents/GitHub/RUBL/maxent_prep.R')
 
 #============================================================================
 # Model running Functions
@@ -228,19 +228,19 @@ auc.extract = function(obs.class,model){
   df1$auc.l90 = df1$auc.m - df1$auc.se*1.645
   df1$auc.u90 = df1$auc.m + df1$auc.se*1.645
   df1
-}
-
-auc.tab.fs = rbind(auc.extract('lf',mods.lf),auc.extract('sf',mods.sf),
-                   auc.extract('ind',mods.ind))
-
-auc.tab.fs
-auc.extract(mods.sf)
-auc.extract(mods.ind)
-
-names(mods.lf[[1]])
-
-(mods.lf[[1]][[3]])
-mods.lf[[1]][[3]]@auc
+# }
+# 
+# auc.tab.fs = rbind(auc.extract('lf',mods.lf),auc.extract('sf',mods.sf),
+#                    auc.extract('ind',mods.ind))
+# 
+# auc.tab.fs
+# auc.extract(mods.sf)
+# auc.extract(mods.ind)
+# 
+# names(mods.lf[[1]])
+# 
+# (mods.lf[[1]][[3]])
+# mods.lf[[1]][[3]]@auc
 
 #----------------------------------------------------------------------------
 # Function to calculate the point biserial correlation across runs
@@ -293,10 +293,10 @@ var.contribution.fun = function(model){
   results.frame = results.frame[,-c(1:5)]
   results.frame[order(results.frame$rank, decreasing = T),]
 }
-
-var.contribution.fun(mods.lf)
-var.contribution.fun(mods.sf)
-var.contribution.fun(mods.ind)
+# 
+# var.contribution.fun(mods.lf)
+# var.contribution.fun(mods.sf)
+# var.contribution.fun(mods.ind)
 
 
 #----------------------------------------------------------------------------
@@ -399,41 +399,41 @@ cbi.plot = function(cbi.in,main){
 # Construct a data frame of the p-to-e ratios by
 # fold and calculate statistics
 #--------------------------------------------------
-
-df1 = data.frame(f0,f1,f2,f3,f4)
-
-f = apply(df1, 1, mean)
-se = apply(df1,1,sd)/sqrt(dim(df1)[2])
-f.uci = f + qnorm(0.975)*se
-f.lci = f - qnorm(0.975)*se
-
-df2 = data.frame(suitability, f, se, f.uci, f.lci)
-
-df3 = df2[df2$f > 0,]
-
-plot(df3$suitability,df3$f, type = 'l', lwd = 2,
-     xlab = 'Habitat suitability',
-     ylab = 'Predicted:Expected',
-     cex.lab = 1.5)
-lines(df3$suitability, df3$f.uci, lty = 2)
-lines(df3$suitability, df3$f.lci, lty = 2)
-abline(h = 1, lty = 3)
-
-cor.test(suitability, f, method = 'spearman')
-
-#--------------------------------------------------
-# Plotting suitability
-#--------------------------------------------------
-
-r = raster('lf_avg.asc')
-plot(r)
-
-rclmat = matrix(c(-Inf,.05,0,.06,.16,1,.36,Inf, 2), byrow = T, nrow = 3)
-r.rc = reclassify(r, rclmat)
-
-plot(r.rc, col = c('gray90','blue','red'))
-legend('bottomright', legend = c('Unsuitable','Marginal','Suitable'),
-       fill = c('gray90','blue','red'), cex = 1.5, bty = 'n')
+# 
+# df1 = data.frame(f0,f1,f2,f3,f4)
+# 
+# f = apply(df1, 1, mean)
+# se = apply(df1,1,sd)/sqrt(dim(df1)[2])
+# f.uci = f + qnorm(0.975)*se
+# f.lci = f - qnorm(0.975)*se
+# 
+# df2 = data.frame(suitability, f, se, f.uci, f.lci)
+# 
+# df3 = df2[df2$f > 0,]
+# 
+# plot(df3$suitability,df3$f, type = 'l', lwd = 2,
+#      xlab = 'Habitat suitability',
+#      ylab = 'Predicted:Expected',
+#      cex.lab = 1.5)
+# lines(df3$suitability, df3$f.uci, lty = 2)
+# lines(df3$suitability, df3$f.lci, lty = 2)
+# abline(h = 1, lty = 3)
+# 
+# cor.test(suitability, f, method = 'spearman')
+# 
+# #--------------------------------------------------
+# # Plotting suitability
+# #--------------------------------------------------
+# 
+# r = raster('lf_avg.asc')
+# plot(r)
+# 
+# rclmat = matrix(c(-Inf,.05,0,.06,.16,1,.36,Inf, 2), byrow = T, nrow = 3)
+# r.rc = reclassify(r, rclmat)
+# 
+# plot(r.rc, col = c('gray90','blue','red'))
+# legend('bottomright', legend = c('Unsuitable','Marginal','Suitable'),
+#        fill = c('gray90','blue','red'), cex = 1.5, bty = 'n')
 
 
 
