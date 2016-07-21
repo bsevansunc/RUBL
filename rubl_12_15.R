@@ -13,11 +13,9 @@ library(sp) ; library(raster) ; library(dismo)
 
 # Load environment data:
 
-# source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
+source(str_c(pathToSource, 'load_env.R'))
 
-# Run from maxent prep
-
-env.stack
+env.stack <- loadEnv(str_c(pathToFiles, 'lc_asc'))
 
 # Find the SWD data (searches for and ID's all files that end in ".csv":
 
@@ -39,6 +37,23 @@ pts.bg <- swdList[[2]]
 pts.bz <- swdList[[3]]
 pts.eb <- swdList[[4]]
 
+# Get 99% quantiles of latitude and longitude:
+
+swdQuantileLat <- stats::quantile(swdList[[1]]$lat, c(.01,.99))
+swdQuantileLon <- stats::quantile(swdList[[1]]$lon, c(.01,.99))
+
+# Subset swd list to the lat and lon quantiles:
+
+for(i in 1:length(swdList)){
+  swdList[[i]] <- swdList[[i]] %>%
+    dplyr::filter(
+      lat >= swdQuantileLat[1],
+      lat <= swdQuantileLat[2],
+      lon >= swdQuantileLon[1],
+      lon <= swdQuantileLon[2]
+    )
+}
+
 # For background points, add a 'bg' for the species column:
 
 swdList[[2]] <- swdList[[2]] %>%
@@ -47,18 +62,18 @@ swdList[[2]] <- swdList[[2]] %>%
   
 # Project swd data as points:
 
-spatialPointList <- list(length = length(swdList))
+spatialPointList <- vector('list', length = length(swdList))
+names(spatialPointList) <- names(swdList)
 
 for(i in 1:length(swdList)){
   spatialPointList[[i]] <- SpatialPoints(swdList[[i]][,c('lon','lat')],
                 proj4string = CRS(projection(env.stack)))
 }
 
-names(spatialPointList) <- c('all','bg','bz','eb')
-
 # Extract environmental data to points:
 
-ptEnvList <- list(length = length(swdList))
+ptEnvList <- vector('list', length = length(swdList))
+names(ptEnvList) <- names(swdList)
 
 for(i in 1:length(swdList)){
    envExtract<- raster::extract(env.stack, spatialPointList[[i]]) %>%
@@ -66,8 +81,6 @@ for(i in 1:length(swdList)){
    ptEnvList[[i]] <- cbind(dplyr::select(swdList[[i]], sp:lat),
                            envExtract)
 }
-
-names(ptEnvList) <- c('all','bg','bz','eb')
 
 swdRUBL <- list(ptEnvList[[1]],ptEnvList[[3]],ptEnvList[[4]])
   names(swdRUBL) <- c('all','bz','eb')
@@ -102,14 +115,14 @@ swd <- prepSWD(swdRUBL)
 
 # Run model for a given value of K, observationClass, and flock size class:
 
-maxentRun = function(observationClass, flockSizeClass, kFold, beta.multiplier){
+maxentRun <- function(observationClass, flockSizeClass, kFold, beta.multiplier){
   # Create input file of k fold::
   max.in <- swd[[observationClass]][[flockSizeClass]] %>%
     dplyr::filter(k != kFold) %>%
     dplyr::select(-c(k, lon, lat))
   max.in <- data.frame(max.in)
   # Set model arguments
-  beta.r = paste('betamultiplier=',beta.multiplier,sep = '')
+  beta.r <- str_c('betamultiplier=', beta.multiplier)
   mod.args = c('nothreshold', 'nohinge', 'noproduct',#'noquadratic',
                beta.r, 'addallsamplestobackground',
                'writebackgroundpredictions','writeplotdata',
@@ -269,7 +282,7 @@ random.swd.pair = function(sp1, sp2){
   # Remove unevaluated flock
   flockData <- swdRUBL[[1]] %>%
     dplyr::filter(sp == sp1|sp == sp2)
-  nSp1 <- nrow(dplyr::filter(swdRUBL[[1]], sp == sp1))
+  nSp1 <- nrow(dplyr::filter(flockData, sp == sp1))
   # Determine the sample size as the proportion of species 1:
   prob.s1 = nSp1/nrow(flockData)
   # Generate random value of 1 or 0 with the probability of obtaining
@@ -302,11 +315,11 @@ maxentRunRawPlot = function(inFlockData, beta.multiplier = 0){
 
 # Run models of empirical data:
 
-lf <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'ind') %>%
+lf <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'lf') %>%
                mutate(sp = 1))
 sf <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'sf') %>%
                mutate(sp = 1))
-ind <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'lf') %>%
+ind <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'ind') %>%
                 mutate(sp = 1))
 
 # Run null models for flock size pairs
@@ -339,7 +352,7 @@ I.dist = function(p.x, p.y){
   # p.list = list(p.x,p.y)
   # Calculate the modified-Hellinger similarity (Warren 2008, pg. 2870)
   # niche.overlap(p.list)[2,1]
-  niche.overlap(p.y, p.x)
+  niche.overlap(list(p.y, p.x))
 }
 
 #-------------------------------------------------------------------------------
@@ -349,19 +362,20 @@ I.dist = function(p.x, p.y){
 # distance (I) of the actual data and slot2 contains the modified-H of the
 # null distribution.
 
-run.nea = function(sp1, sp2, iterations){ #, null.xy, null.yx){
-  I.actual <- I.dist(sp1, sp2)
+run.nea <- function(sp1, sp2, iterations){ #, null.xy, null.yx){
+  I.actual <- I.dist(
+    maxentRunRawPlot(dplyr::filter(flockData, sp == sp1) %>%
+                       mutate(sp = 1)),
+    maxentRunRawPlot(dplyr::filter(flockData, sp == sp2) %>%
+                       mutate(sp = 1))
+    )[2]
   I.null <- rep(NA, iterations)
   for(i in 1:iterations){
     I.null[i] <- I.dist(
       maxentRunRawPlot(random.swd.pair(sp1, sp2)),
-      maxentRunRawPlot(random.swd.pair(sp1, sp2))
-    )
+      maxentRunRawPlot(random.swd.pair(sp2, sp1))
+    )[2]
   }
-#   I.null = numeric()
-#   for (i in 1:1000){
-#     I.null[i] = I.dist(null.xy[[i]],null.yx[[i]])
-#   }
   nea.list <- list(I.actual, I.null)
   names(nea.list) <- c('I.actual','I.null')
   return(nea.list)
@@ -373,15 +387,15 @@ run.nea = function(sp1, sp2, iterations){ #, null.xy, null.yx){
 
 # Large flock vs. small flock:
 
-I.lf.sf = run.nea(lf,sf,n.lf.sf,n.sf.lf)
+I.lf.sf = run.nea('lf','sf',100)
 
 # Large flock vs. individual sightings (<20 individuals):
 
-I.lf.ind = run.nea(lf,ind,n.lf.ind,n.ind.lf)
+I.lf.ind = run.nea('lf','ind',100)
 
 # Small flock vs. individual sightings (<20 individuals):
 
-I.sf.ind = run.nea(sf,ind,n.sf.ind,n.ind.sf)
+I.sf.ind = run.nea('sf','ind',100)
 
 #-------------------------------------------------------------------------------
 # Stats for niche equivalency analyses
@@ -452,6 +466,50 @@ hist.mhd = function(I.sp1.sp2,main.label,out.name, leg){
 }
 
 # Make plots:
+
+library(ggplot2)
+
+data.frame(I = I.lf.sf$I.null) %>%
+  tbl_df %>%
+  ggplot(aes(I)) +
+  geom_density(fill = 'gray90') +
+  scale_x_continuous(limits = c(.9, 1)) +
+  ylab('Density')+
+  xlab ('Modified-Hellinger similarity (I)') +
+  theme_bw() +
+  theme(axis.title.y = element_text(size = rel(1.5), vjust = .9),
+        axis.title.x = element_text(size = rel(1.5), vjust = -0.4)) +
+  # geom_vline(xintercept = I.lf.sf$I.actual, linewidth = 2.5, linetype = 'longdash')
+  geom_segment(data = data.frame(I = I.lf.sf$I.actual),
+               aes(x = I, y = 0, xend = I, yend = Inf),
+               linewidth = 2.5, linetype = 'longdash')
+
+data.frame(I = I.lf.ind$I.null) %>%
+  tbl_df %>%
+  ggplot(aes(I)) +
+  geom_density(fill = 'gray90') +
+  scale_x_continuous(limits = c(.9, 1)) +
+  ylab('Density')+
+  xlab ('Modified-Hellinger similarity (I)') +
+  theme_bw() +
+  # geom_vline(xintercept = I.lf.sf$I.actual, linewidth = 2.5, linetype = 'longdash')
+  geom_segment(data = data.frame(I = I.lf.ind$I.actual),
+               aes(x = I, y = 0, xend = I, yend = Inf),
+               linewidth = 2.5, linetype = 'longdash')
+
+
+data.frame(I = I.sf.ind$I.null) %>%
+  tbl_df %>%
+  ggplot(aes(I)) +
+  geom_density(fill = 'gray90') +
+  scale_x_continuous(limits = c(.9, 1)) +
+  ylab('Density')+
+  xlab ('Modified-Hellinger similarity (I)') +
+  theme_bw() +
+  # geom_vline(xintercept = I.lf.sf$I.actual, linewidth = 2.5, linetype = 'longdash')
+  geom_segment(data = data.frame(I = I.sf.ind$I.actual),
+               aes(x = I, y = 0, xend = I, yend = Inf),
+               linewidth = 2.5, linetype = 'longdash')
 
 hist.mhd(I.lf.sf, 'Large vs.medium flock sightings', 'mh_dist_lf_sf.jpg',T)
 
