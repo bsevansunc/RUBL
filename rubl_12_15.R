@@ -2,14 +2,19 @@
 
 library('sp') ; library('raster') ; library('dismo')
 
-source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
+# source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
+
+# Run from maxent prep
 
 env.stack
 
 # Find the SWD data (searches for and ID's all files that end in ".csv":
+# 
+# swdData <- list.files('C:/Users/Brian/Dropbox/rubl_12_15/swd',
+#                        pattern='\\.csv$', full=T)
 
-swdData <- list.files('C:/Users/Brian/Dropbox/rubl_12_15/swd',
-                       pattern='\\.csv$', full=T)
+swdData <- list.files('C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/swd',
+                      pattern = '\\.csv$', full = T)
 
 # Add data to memory:
 
@@ -127,13 +132,13 @@ maxentEvaluate <- function(observationClass, flockSizeClass, kFold, beta.multipl
               swd = maxentModelOut$swd, swdTest = swdTest))
 }
 # 
-# observationClass = 'all'
-# flockSizeClass = 'lf'
-# kFold = 3
-# beta.multiplier = 2
-# 
-# test <- maxentRun(observationClass, flockSizeClass, kFold, beta.multiplier)
-# test
+observationClass = 'all'
+flockSizeClass = 'lf'
+kFold = 3
+beta.multiplier = 2
+
+test <- maxentRun(observationClass, flockSizeClass, kFold, beta.multiplier)
+test
 # 
 # mTest <- maxentEvaluate(observationClass, flockSizeClass, kFold, beta.multiplier)
 
@@ -299,19 +304,19 @@ ind = maxentRunRawPlot(dplyr::filter(flockData, sp == 'lf') %>%
 # Run null models for flock size pairs
 # Note: Each of the null surface lists are 382.5 Mb!
 
-n.lf.sf <- list(length = 100)
-n.sf.lf <- list(length = 100)
-n.lf.ind <- list(length = 100)
-n.ind.lf <- list(length = 100)
-n.sf.ind <- list(length = 100)
-n.ind.sf <- list(length = 100)
+n.lf.sf <- list(length = 1000)
+n.sf.lf <- list(length = 1000)
+n.lf.ind <- list(length = 1000)
+n.ind.lf <- list(length = 1000)
+n.sf.ind <- list(length = 1000)
+n.ind.sf <- list(length = 1000)
 
-for(i in 1:100) n.sf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'ind'))
-for(i in 1:100) n.ind.sf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'sf'))
-for(i in 1:100) n.lf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'ind'))
-for(i in 1:100) n.ind.lf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'lf'))
-for(i in 1:100) n.lf.sf[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'sf'))
-for(i in 1:100) n.sf.lf[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'lf'))
+for(i in 1:1000) n.sf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'ind'))
+for(i in 1:1000) n.ind.sf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'sf'))
+for(i in 1:1000) n.lf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'ind'))
+for(i in 1:1000) n.ind.lf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'lf'))
+for(i in 1:1000) n.lf.sf[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'sf'))
+for(i in 1:1000) n.sf.lf[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'lf'))
 
 
 #-------------------------------------------------------------------------------
@@ -338,7 +343,7 @@ I.dist = function(p.x, p.y){
 run.nea = function(sp1, sp2, null.xy, null.yx){
   I.actual = I.dist(sp1, sp2)
   I.null = numeric()
-  for (i in 1:100){
+  for (i in 1:1000){
     I.null[i] = I.dist(null.xy[[i]],null.yx[[i]])
   }
   nea.list = list(I.actual, I.null)
@@ -409,8 +414,8 @@ hist.mhd = function(I.sp1.sp2,main.label,out.name, leg){
   null.dist = out.stats(I.sp1.sp2)[[2]]
   emp.dist = out.stats(I.sp1.sp2)[[1]]
   plot.new()
-  setwd('C:/Users/Brian/Dropbox/rubl_12_15/scratch_out')
-  jpeg(out.name, 1200,1250, res = 300)
+  # setwd('C:/Users/Brian/Dropbox/rubl_12_15/scratch_out')
+  # jpeg(out.name, 1200,1250, res = 300)
   hist(null.dist, breaks = seq(0,1, by = .005), freq = F,
        xlim = c(0.85,1), ylim = c(0,110),
        col = 'gray80', cex.lab = .9,
@@ -427,16 +432,16 @@ hist.mhd = function(I.sp1.sp2,main.label,out.name, leg){
   if (leg == T)
     legend(.85,100,'Actual',lty = 2,lwd = 2, bty = 'n', 
            x.intersp = .4, cex = .9)
-  dev.off()
+  # dev.off()
 }
 
 # Make plots:
 
-hist.mhd(I.lf.sf, 'Large vs.small flock sightings', 'mh_dist_lf_sf.jpg',T)
+hist.mhd(I.lf.sf, 'Large vs.medium flock sightings', 'mh_dist_lf_sf.jpg',T)
 
-hist.mhd(I.lf.ind, 'Large flock vs. individual sightings', 'mh_dist_lf_ind.jpg',F)
+hist.mhd(I.lf.ind, 'Large flock vs. small flock sightings', 'mh_dist_lf_ind.jpg',F)
 
-hist.mhd(I.sf.ind, 'Small flock vs. individual sightings', 'mh_dist_sf_ind.jpg',F)
+hist.mhd(I.sf.ind, 'Medium flock vs. small flock sightings', 'mh_dist_sf_ind.jpg',F)
 
 #-------------------------------------------------------------------------------
 # Predicted niche occupancy
