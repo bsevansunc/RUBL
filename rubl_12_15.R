@@ -1,6 +1,17 @@
-# Load environment data:
+# Set file paths
 
-library(dplyr) ; library(sp) ; library(raster) ; library(dismo) 
+pathToFiles <- 'C:/Users/Brian/Dropbox/rubl_12_15/'
+
+pathToSource <- 'C:/Users/Brian/Desktop/gits/RUBL/'
+
+pathToOutput <- ''
+
+# Load libraries:
+
+library(dplyr) ; library(tidyr); library(stringr)
+library(sp) ; library(raster) ; library(dismo) 
+
+# Load environment data:
 
 # source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
 
@@ -9,12 +20,11 @@ library(dplyr) ; library(sp) ; library(raster) ; library(dismo)
 env.stack
 
 # Find the SWD data (searches for and ID's all files that end in ".csv":
-# 
-# swdData <- list.files('C:/Users/Brian/Dropbox/rubl_12_15/swd',
-#                        pattern='\\.csv$', full=T)
 
-swdData <- list.files('C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/swd',
-                      pattern = '\\.csv$', full = T)
+swdData <- list.files(
+  str_c(pathToFiles, 'swd'),
+  pattern='\\.csv$', full=T
+  )
 
 # Add data to memory:
 
