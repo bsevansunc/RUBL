@@ -1,6 +1,6 @@
 # Load environment data:
 
-library('sp') ; library('raster') ; library('dismo')
+library(dplyr) ; library(sp) ; library(raster) ; library(dismo) 
 
 # source('C:/Users/Brian/Desktop/gits/RUBL/load_env.R')
 
@@ -24,19 +24,17 @@ names(swdList) <- c('all','bg','bz','eb')
 
 # Assign names to each of the files:
 
-pts.all = swdList[[1]]
-pts.bg = swdList[[2]]
-pts.bz = swdList[[3]]
-pts.eb = swdList[[4]]
+pts.all <- swdList[[1]]
+pts.bg <- swdList[[2]]
+pts.bz <- swdList[[3]]
+pts.eb <- swdList[[4]]
 
 # For background points, add a 'bg' for the species column:
-library(dplyr)
 
 swdList[[2]] <- swdList[[2]] %>%
   dplyr::mutate(sp = 'bg') %>%
   dplyr::select(sp, lon:woodland)
   
-
 # Project swd data as points:
 
 spatialPointList <- list(length = length(swdList))
@@ -65,12 +63,12 @@ swdRUBL <- list(ptEnvList[[1]],ptEnvList[[3]],ptEnvList[[4]])
   names(swdRUBL) <- c('all','bz','eb')
   
 swdBG <- ptEnvList[[2]]
-swdBG$sp <-0
+swdBG$sp <- 0
 
 # Function to prepare swd files:
 
 prepSWD <- function(inData){
-  swdRUBL <-inData
+  swdRUBL <- inData
   swd <- list(length = 3)
   flockSizes = as.character(unique(swdRUBL[[1]]$sp))
   
@@ -281,8 +279,8 @@ maxentRunRawPlot = function(inFlockData, beta.multiplier = 0){
   max.in <- rbind(swdFlock, swdBG) %>%
     dplyr::select(-c(lat, lon))
   # Set model arguments
-  beta.r = paste('betamultiplier=',beta.multiplier,sep = '')
-  mod.args = c('nothreshold', 'nohinge', 'noproduct',#'noquadratic',
+  beta.r <- str_c('betamultiplier=', beta.multiplier)
+  mod.args <- c('nothreshold', 'nohinge', 'noproduct',#'noquadratic',
                beta.r, 'addallsamplestobackground',
                'writebackgroundpredictions','writeplotdata',
                'noautofeature','nooutputgrids',
@@ -294,29 +292,29 @@ maxentRunRawPlot = function(inFlockData, beta.multiplier = 0){
 
 # Run models of empirical data:
 
-lf = maxentRunRawPlot(dplyr::filter(flockData, sp == 'ind') %>%
+lf <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'ind') %>%
                mutate(sp = 1))
-sf = maxentRunRawPlot(dplyr::filter(flockData, sp == 'sf') %>%
+sf <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'sf') %>%
                mutate(sp = 1))
-ind = maxentRunRawPlot(dplyr::filter(flockData, sp == 'lf') %>%
+ind <- maxentRunRawPlot(dplyr::filter(flockData, sp == 'lf') %>%
                 mutate(sp = 1))
 
 # Run null models for flock size pairs
 # Note: Each of the null surface lists are 382.5 Mb!
-
-n.lf.sf <- list(length = 1000)
-n.sf.lf <- list(length = 1000)
-n.lf.ind <- list(length = 1000)
-n.ind.lf <- list(length = 1000)
-n.sf.ind <- list(length = 1000)
-n.ind.sf <- list(length = 1000)
-
-for(i in 1:1000) n.sf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'ind'))
-for(i in 1:1000) n.ind.sf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'sf'))
-for(i in 1:1000) n.lf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'ind'))
-for(i in 1:1000) n.ind.lf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'lf'))
-for(i in 1:1000) n.lf.sf[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'sf'))
-for(i in 1:1000) n.sf.lf[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'lf'))
+# 
+# n.lf.sf <- list(length = 1000)
+# n.sf.lf <- list(length = 1000)
+# n.lf.ind <- list(length = 1000)
+# n.ind.lf <- list(length = 1000)
+# n.sf.ind <- list(length = 1000)
+# n.ind.sf <- list(length = 1000)
+# 
+# for(i in 1:1000) n.sf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'ind'))
+# for(i in 1:1000) n.ind.sf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'sf'))
+# for(i in 1:1000) n.lf.ind[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'ind'))
+# for(i in 1:1000) n.ind.lf[[i]] <- maxentRunRawPlot(random.swd.pair('ind', 'lf'))
+# for(i in 1:1000) n.lf.sf[[i]] <- maxentRunRawPlot(random.swd.pair('lf', 'sf'))
+# for(i in 1:1000) n.sf.lf[[i]] <- maxentRunRawPlot(random.swd.pair('sf', 'lf'))
 
 
 #-------------------------------------------------------------------------------
@@ -328,9 +326,10 @@ I.dist = function(p.x, p.y){
   p.x = as(p.x, 'SpatialGridDataFrame')
   p.y = as(p.y, 'SpatialGridDataFrame')
   # Make a list of the probability surfaces:
-  p.list = list(p.x,p.y)
+  # p.list = list(p.x,p.y)
   # Calculate the modified-Hellinger similarity (Warren 2008, pg. 2870)
-  niche.overlap(p.list)[2,1]
+  # niche.overlap(p.list)[2,1]
+  niche.overlap(p.y, p.x)
 }
 
 #-------------------------------------------------------------------------------
@@ -340,15 +339,22 @@ I.dist = function(p.x, p.y){
 # distance (I) of the actual data and slot2 contains the modified-H of the
 # null distribution.
 
-run.nea = function(sp1, sp2, null.xy, null.yx){
-  I.actual = I.dist(sp1, sp2)
-  I.null = numeric()
-  for (i in 1:1000){
-    I.null[i] = I.dist(null.xy[[i]],null.yx[[i]])
+run.nea = function(sp1, sp2, iterations){ #, null.xy, null.yx){
+  I.actual <- I.dist(sp1, sp2)
+  I.null <- rep(NA, iterations)
+  for(i in 1:iterations){
+    I.null[i] <- I.dist(
+      maxentRunRawPlot(random.swd.pair(sp1, sp2)),
+      maxentRunRawPlot(random.swd.pair(sp1, sp2))
+    )
   }
-  nea.list = list(I.actual, I.null)
-  names(nea.list) = c('I.actual','I.null')
-  nea.list
+#   I.null = numeric()
+#   for (i in 1:1000){
+#     I.null[i] = I.dist(null.xy[[i]],null.yx[[i]])
+#   }
+  nea.list <- list(I.actual, I.null)
+  names(nea.list) <- c('I.actual','I.null')
+  return(nea.list)
 }
 
 #-------------------------------------------------------------------------------
