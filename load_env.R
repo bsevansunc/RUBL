@@ -8,7 +8,7 @@
 # 4. Defines the projection of the rasters
 
 
-load.env = function(rasterDirectory){
+loadEnv = function(rasterDirectory){
   require(raster)
   # Find the raster data (searches for and ID's all files that end in ".asc":
   
