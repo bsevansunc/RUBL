@@ -4,6 +4,8 @@ pathToFiles <- 'C:/Users/Brian/Dropbox/rubl_12_15/'
 
 pathToSource <- 'C:/Users/Brian/Desktop/gits/RUBL/'
 
+pathToFiles <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/'
+
 pathToOutput <- ''
 
 # Load libraries:
@@ -273,14 +275,14 @@ lfLogisticMean <- mean(allLfOutRlogistic)
 # Niche equivalency:
 #-------------------------------------------------------------------------------*
 
-flockData <- swdRUBL[[1]]
+flockData <- swdRUBL[[1]] 
 
 # Generate a random sample of species 1 by species 2
 # Note: Species 1 is the species of interest, comparison to species 2
 
 random.swd.pair = function(sp1, sp2){
   # Remove unevaluated flock
-  flockData <- swdRUBL[[1]] %>%
+  flockData <- flockData %>%
     dplyr::filter(sp == sp1|sp == sp2)
   nSp1 <- nrow(dplyr::filter(flockData, sp == sp1))
   # Determine the sample size as the proportion of species 1:
@@ -387,15 +389,15 @@ run.nea <- function(sp1, sp2, iterations){ #, null.xy, null.yx){
 
 # Large flock vs. small flock:
 
-I.lf.sf = run.nea('lf','sf',1)
+I.lf.sf <- run.nea('lf','sf',1000)
 
 # Large flock vs. individual sightings (<20 individuals):
 
-I.lf.ind = run.nea('lf','ind',1000)
+I.lf.ind <- run.nea('lf','ind',1000)
 
 # Small flock vs. individual sightings (<20 individuals):
 
-I.sf.ind = run.nea('sf','ind',1000)
+I.sf.ind <- run.nea('sf','ind',1000)
 
 #-------------------------------------------------------------------------------
 # Stats for niche equivalency analyses
@@ -481,8 +483,8 @@ data.frame(I = I.lf.sf$I.null) %>%
         axis.title.x = element_text(size = rel(1.5), vjust = -0.4)) +
   # geom_vline(xintercept = I.lf.sf$I.actual, linewidth = 2.5, linetype = 'longdash')
   geom_segment(data = data.frame(I = I.lf.sf$I.actual),
-               aes(x = I, y = 0, xend = I, yend = Inf),
-               linewidth = 2.5, linetype = 'longdash')
+               aes(x = I, y = 0, xend = I, yend = Inf))#,
+              # linewidth = 2.5, linetype = 'longdash')
 
 data.frame(I = I.lf.ind$I.null) %>%
   tbl_df %>%
@@ -494,8 +496,8 @@ data.frame(I = I.lf.ind$I.null) %>%
   theme_bw() +
   # geom_vline(xintercept = I.lf.sf$I.actual, linewidth = 2.5, linetype = 'longdash')
   geom_segment(data = data.frame(I = I.lf.ind$I.actual),
-               aes(x = I, y = 0, xend = I, yend = Inf),
-               linewidth = 2.5, linetype = 'longdash')
+               aes(x = I, y = 0, xend = I, yend = Inf))#,
+               #linewidth = 2.5, linetype = 'longdash')
 
 
 data.frame(I = I.sf.ind$I.null) %>%
@@ -508,8 +510,8 @@ data.frame(I = I.sf.ind$I.null) %>%
   theme_bw() +
   # geom_vline(xintercept = I.lf.sf$I.actual, linewidth = 2.5, linetype = 'longdash')
   geom_segment(data = data.frame(I = I.sf.ind$I.actual),
-               aes(x = I, y = 0, xend = I, yend = Inf),
-               linewidth = 2.5, linetype = 'longdash')
+               aes(x = I, y = 0, xend = I, yend = Inf))#,
+               #linewidth = 2.5, linetype = 'longdash')
 
 hist.mhd(I.lf.sf, 'Large vs.medium flock sightings', 'mh_dist_lf_sf.jpg',T)
 
@@ -536,7 +538,6 @@ pno.df = function(mod.x, mod.y, env.var){
 }
 
 
-
 # Determine the modified-Hellinger similarity between two pnos:
 
 pno.I = function(mod.x, mod.y, env.var){
@@ -546,40 +547,73 @@ pno.I = function(mod.x, mod.y, env.var){
 }
 
 
-# Run pno models, returns a list of the
-# actual pno-I (one value) and a vector of 100 null pno-I's:
-
-run.pno = function(mod.x, mod.y, null.xy, null.yx, env.var){
+run.pno <- function(sp1, sp2, env.var, iterations){
+  mod.x <- maxentRunRawPlot(dplyr::filter(flockData, sp == sp1) %>%
+                     mutate(sp = 1))
+  mod.y <- maxentRunRawPlot(dplyr::filter(flockData, sp == sp2) %>%
+                     mutate(sp = 1))
   pno.actual = pno.df(mod.x, mod.y, env.var)
   pno.I.actual = pno.I(mod.x, mod.y, env.var)
   pno.I.null = numeric()
-  for (i in 1:100){
-    pno.I.null[i] = pno.I(null.xy[[i]],null.yx[[i]], env.var)
+  for (i in 1:iterations){
+    null.xy <- maxentRunRawPlot(random.swd.pair(sp1, sp2))
+    null.yx <- maxentRunRawPlot(random.swd.pair(sp2, sp1))
+    pno.I.null[i] = pno.I(null.xy,null.yx, env.var)
   }
   pno.list = list(pno.I.actual, pno.I.null, pno.actual) # pno.actual, 
   names(pno.list) = c('pno.I.actual','pno.I.null','pno.actual')
   return(pno.list)
 }
 
+# Run pno models, returns a list of the
+# actual pno-I (one value) and a vector of 100 null pno-I's:
+
+# run.pno = function(mod.x, mod.y, null.xy, null.yx, env.var){
+#   pno.actual = pno.df(mod.x, mod.y, env.var)
+#   pno.I.actual = pno.I(mod.x, mod.y, env.var)
+#   pno.I.null = numeric()
+#   for (i in 1:100){
+#     pno.I.null[i] = pno.I(null.xy[[i]],null.yx[[i]], env.var)
+#   }
+#   pno.list = list(pno.I.actual, pno.I.null, pno.actual) # pno.actual, 
+#   names(pno.list) = c('pno.I.actual','pno.I.null','pno.actual')
+#   return(pno.list)
+# }
+
 #-------------------------------------------------------------------------------
 # Run PNO
 #-------------------------------------------------------------------------------
 # THIS TAKES A VERY LONG TIME TO RUN!
 
-pno.lf.sf = list()
-for(i in 1:15){
-  pno.lf.sf[[i]] = run.pno(lf, sf, n.lf.sf, n.sf.lf,i)
+pno.lf.sf <- vector('list', length = 15)
+for(j in 1:15){
+  pno.lf.sf[[j]] <- run.pno('lf', 'sf', j, 100)
 }
 
-pno.lf.ind = list()
-for(i in 1:15){
-  pno.lf.ind[[i]] = run.pno(lf, ind, n.lf.ind, n.ind.lf,i)
+pno.lf.ind <- vector('list', length = 15)
+for(j in 1:15){
+  pno.lf.ind[[j]] <- run.pno('lf', 'ind', j, 100)
 }
 
-pno.sf.ind = list()
-for(i in 1:15){
-  pno.sf.ind[[i]] = run.pno(sf, ind, n.sf.ind, n.ind.sf,i)
+pno.sf.ind <- vector('list', length = 15)
+for(j in 1:15){
+  pno.sf.ind[[j]] <- run.pno('sf', 'ind', j, 100)
 }
+# 
+# pno.lf.sf = list()
+# for(i in 1:15){
+#   pno.lf.sf[[i]] = run.pno(lf, sf, n.lf.sf, n.sf.lf,i)
+# }
+# 
+# pno.lf.ind = list()
+# for(i in 1:15){
+#   pno.lf.ind[[i]] = run.pno(lf, ind, n.lf.ind, n.ind.lf,i)
+# }
+# 
+# pno.sf.ind = list()
+# for(i in 1:15){
+#   pno.sf.ind[[i]] = run.pno(sf, ind, n.sf.ind, n.ind.sf,i)
+# }
 
 names(pno.lf.sf) = names(env.stack)
 names(pno.lf.ind) = names(env.stack)
