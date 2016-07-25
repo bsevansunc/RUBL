@@ -387,15 +387,15 @@ run.nea <- function(sp1, sp2, iterations){ #, null.xy, null.yx){
 
 # Large flock vs. small flock:
 
-I.lf.sf = run.nea('lf','sf',100)
+I.lf.sf = run.nea('lf','sf',1)
 
 # Large flock vs. individual sightings (<20 individuals):
 
-I.lf.ind = run.nea('lf','ind',100)
+I.lf.ind = run.nea('lf','ind',1000)
 
 # Small flock vs. individual sightings (<20 individuals):
 
-I.sf.ind = run.nea('sf','ind',100)
+I.sf.ind = run.nea('sf','ind',1000)
 
 #-------------------------------------------------------------------------------
 # Stats for niche equivalency analyses
