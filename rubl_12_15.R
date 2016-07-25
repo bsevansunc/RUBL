@@ -529,19 +529,19 @@ hist.mhd(I.sf.ind, 'Medium flock vs. small flock sightings', 'mh_dist_sf_ind.jpg
 
 # Calculate pno:
 
-pno.df = function(mod.x, mod.y, env.var){
+pno.df <- function(mod.x, mod.y, env.var){
   # Sum the raw probabilities about a given value of an environmental variable:
-  pno.df = data.frame(zonal(mod.x,env.stack[[env.var]],'sum', digits = 2))
-  pno.df[,3] = zonal(mod.y,env.stack[[env.var]],'sum', digits = 2)[,2]
-  colnames(pno.df) = c('env','pno.sp1','pno.sp2')
+  pno.df <- data.frame(zonal(mod.x,env.stack[[env.var]],'sum', digits = 2))
+  pno.df[,3] <- zonal(mod.y,env.stack[[env.var]],'sum', digits = 2)[,2]
+  colnames(pno.df) <- c('env','pno.sp1','pno.sp2')
   pno.df
 }
 
 
 # Determine the modified-Hellinger similarity between two pnos:
 
-pno.I = function(mod.x, mod.y, env.var){
-  df = pno.df(mod.x, mod.y, env.var)
+pno.I <- function(mod.x, mod.y, env.var){
+  df <- pno.df(mod.x, mod.y, env.var)
   # Calculate the modified-Hellinger similarity (I):
   niche.overlap(df)[2,1]
 }
@@ -552,15 +552,15 @@ run.pno <- function(sp1, sp2, env.var, iterations){
                      mutate(sp = 1))
   mod.y <- maxentRunRawPlot(dplyr::filter(flockData, sp == sp2) %>%
                      mutate(sp = 1))
-  pno.actual = pno.df(mod.x, mod.y, env.var)
-  pno.I.actual = pno.I(mod.x, mod.y, env.var)
-  pno.I.null = numeric()
+  pno.actual <- pno.df(mod.x, mod.y, env.var)
+  pno.I.actual <- pno.I(mod.x, mod.y, env.var)
+  pno.I.null <- numeric()
   for (i in 1:iterations){
     null.xy <- maxentRunRawPlot(random.swd.pair(sp1, sp2))
     null.yx <- maxentRunRawPlot(random.swd.pair(sp2, sp1))
     pno.I.null[i] = pno.I(null.xy,null.yx, env.var)
   }
-  pno.list = list(pno.I.actual, pno.I.null, pno.actual) # pno.actual, 
+  pno.list <- list(pno.I.actual, pno.I.null, pno.actual) # pno.actual, 
   names(pno.list) = c('pno.I.actual','pno.I.null','pno.actual')
   return(pno.list)
 }
@@ -587,17 +587,17 @@ run.pno <- function(sp1, sp2, env.var, iterations){
 
 pno.lf.sf <- vector('list', length = 15)
 for(j in 1:15){
-  pno.lf.sf[[j]] <- run.pno('lf', 'sf', j, 100)
+  pno.lf.sf[[j]] <- run.pno('lf', 'sf', j, 1000)
 }
 
 pno.lf.ind <- vector('list', length = 15)
 for(j in 1:15){
-  pno.lf.ind[[j]] <- run.pno('lf', 'ind', j, 100)
+  pno.lf.ind[[j]] <- run.pno('lf', 'ind', j, 1000)
 }
 
 pno.sf.ind <- vector('list', length = 15)
 for(j in 1:15){
-  pno.sf.ind[[j]] <- run.pno('sf', 'ind', j, 100)
+  pno.sf.ind[[j]] <- run.pno('sf', 'ind', j, 1000)
 }
 # 
 # pno.lf.sf = list()
