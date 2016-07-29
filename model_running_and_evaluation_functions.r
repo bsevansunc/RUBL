@@ -228,7 +228,7 @@ auc.extract = function(obs.class,model){
   df1$auc.l90 = df1$auc.m - df1$auc.se*1.645
   df1$auc.u90 = df1$auc.m + df1$auc.se*1.645
   df1
-# }
+}
 # 
 # auc.tab.fs = rbind(auc.extract('lf',mods.lf),auc.extract('sf',mods.sf),
 #                    auc.extract('ind',mods.ind))
