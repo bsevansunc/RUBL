@@ -102,6 +102,6 @@ readWriteEbird(
 # 2016 eBird
 
 readWriteEbird(
-  'C:/Users/Brian/Downloads/ebd_US_201101_201106_relMay-2016/ebd_US_201101_201106_relMay-2016.txt', 
+  'C:/Users/Brian/Downloads/ebd_US_201603_201606_relMay-2016/ebd_US_201603_201606_relMay-2016.txt', 
   'C:/Users/Brian/Desktop/rubl_summer_2016/winter2016.csv'
 )
