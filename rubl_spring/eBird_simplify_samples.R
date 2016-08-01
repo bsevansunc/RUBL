@@ -48,9 +48,8 @@ eBird <- lapply(
   data.table::fread)
 
 
-samplingRecordList <- lapply(eBird, samplingRecordMaker)
-
-samplingRecords <- do.call('rbind', samplingRecordList) %>%
+samplingRecords <- lapply(eBird, samplingRecordMaker) %>%
+  bind_rows %>%
   tbl_df %>%
   filter(!is.na(lat))
 
@@ -58,11 +57,11 @@ write.csv(samplingRecords,
           'C:/Users/Brian/Desktop/rubl_summer_2016/samplingRecordsWinter.csv',
           row.names = FALSE)
 
-rublRecordList <- lapply(eBird, rublRecordMaker) %>%
+rublRecords <- lapply(eBird, rublRecordMaker) %>%
   bind_rows %>%
   tbl_df
 
-rublRecords <- do.call('rbind', rublRecordList)
+# rublRecords <- do.call('rbind', rublRecordList)
 
 write.csv(rublRecords,
           'C:/Users/Brian/Desktop/rubl_summer_2016/rublRecordsWinter.csv',
@@ -82,10 +81,8 @@ eBird <- lapply(
   paste(fileDirectory, eBirdFiles,sep ='/'),
   data.table::fread)
 
-
-samplingRecordList <- lapply(eBird, samplingRecordMaker)
-
-samplingRecords <- do.call('rbind', samplingRecordList) %>%
+samplingRecords <- lapply(eBird, samplingRecordMaker) %>%
+  bind_rows %>%
   tbl_df %>%
   filter(!is.na(lat))
 
@@ -93,11 +90,9 @@ write.csv(samplingRecords,
           'C:/Users/Brian/Desktop/rubl_summer_2016/samplingRecordsSpring.csv',
           row.names = FALSE)
 
-rublRecordList <- lapply(eBird, rublRecordMaker) %>%
+rublRecords <- lapply(eBird, rublRecordMaker) %>%
   bind_rows %>%
   tbl_df
-
-rublRecords <- do.call('rbind', rublRecordList)
 
 write.csv(rublRecords,
           'C:/Users/Brian/Desktop/rubl_summer_2016/rublRecordsSpring.csv',
