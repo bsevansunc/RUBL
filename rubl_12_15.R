@@ -587,18 +587,20 @@ run.pno <- function(sp1, sp2, env.var, iterations){
 
 pno.lf.sf <- vector('list', length = 15)
 for(j in 1:15){
-  pno.lf.sf[[j]] <- run.pno('lf', 'sf', j, 1000)
+  pno.lf.sf[[j]] <- run.pno('lf', 'sf', j, 100)
 }
 
 pno.lf.ind <- vector('list', length = 15)
 for(j in 1:15){
-  pno.lf.ind[[j]] <- run.pno('lf', 'ind', j, 1000)
+  pno.lf.ind[[j]] <- run.pno('lf', 'ind', j, 100)
 }
 
 pno.sf.ind <- vector('list', length = 15)
 for(j in 1:15){
-  pno.sf.ind[[j]] <- run.pno('sf', 'ind', j, 1000)
+  pno.sf.ind[[j]] <- run.pno('sf', 'ind', j, 100)
 }
+
+
 # 
 # pno.lf.sf = list()
 # for(i in 1:15){
@@ -618,6 +620,11 @@ for(j in 1:15){
 names(pno.lf.sf) = names(env.stack)
 names(pno.lf.ind) = names(env.stack)
 names(pno.sf.ind) = names(env.stack)
+
+
+saveRDS(pno.lf.sf, 'pno.lf.sf.rds')
+saveRDS(pno.lf.ind, 'pno.lf.ind.rds')
+saveRDS(pno.sf.ind, 'pno.sf.ind.rds')
 
 #-------------------------------------------------------------------------------
 # Stat output of pno
@@ -668,6 +675,21 @@ plot.pno = function(env) {
        main = names(env.stack[[env]]), ylab = 'PNO')
   lines(env, sf, lty = 2, lwd = 2)
   lines(env, ind, lty = 3, lwd = 2)
+}
+
+plot.pno(3)
+
+
+plot.pno = function(env) {
+  df = pno.lf.sf[[env]][[3]]
+  ind = pno.lf.ind[[env]][[3]][,3]
+  lc = df[,1]
+  lf = df[,2]
+  sf = df[,3]
+  plot(lf~lc, type = 'l', xlim = c(0,1), lwd =2, bty ='l',
+       main = names(env.stack)[env], ylab = 'PNO')
+  lines(lc, sf, lty = 2, lwd = 2)
+  lines(lc, ind, lty = 3, lwd = 2)
 }
 
 plot.pno(3)

@@ -4,9 +4,15 @@ library(lubridate)
 
 options(stringsAsFactors = FALSE)
 
+# Set read directories
+
+readDirectory <- 'C:/Users/Brian/Desktop/rubl_summer_2016/'
+
 # Get spring and winter samples:
 
-samplingWinter <- read.csv('C:/Users/Brian/Desktop/rubl_summer_2016/samplingRecordsWinter.csv') %>%
+samplingWinter <- read.csv(
+  paste0(readDirectory, 'samplingRecordsWinter.csv')
+  ) %>%
   tbl_df %>%
   mutate(date = as.Date(date)) %>%
   filter(year(date) < 2012,
