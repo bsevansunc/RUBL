@@ -80,4 +80,4 @@ write.csv(samplingSpringCrop, 'samplingSpringCrop.csv', row.names = FALSE)
 
 write.csv(rublWinterCrop, 'rublWinterCrop.csv', row.names = FALSE)
 
-write.csv(rublSpringCrop, 'rublWinterCrop.csv', row.names = FALSE)
+write.csv(rublSpringCrop, 'rublSpringCrop.csv', row.names = FALSE)
