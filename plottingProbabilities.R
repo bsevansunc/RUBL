@@ -1,8 +1,5 @@
 # setwd('C:/Users/Brian/Desktop/gits/RUBL')
 
-
-
-
 rInd <- rasterToPoints(indLogisticMean)
 
 df <- data.frame(rInd)
