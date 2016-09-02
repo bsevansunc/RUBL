@@ -91,6 +91,65 @@ downloadPPTRaster <- function(year, month, day){
   return(crop(ppt, rStack[[1]]))
 }
 
+# Load tmin raster for a given date:
+
+downloadTminRasterMonthly <- function(year){
+  month = c('01', '02')
+  outList <- vector('list', length = 2)
+  for(i in 1:2){
+    ftp <- paste0('ftp://prism.oregonstate.edu/monthly/tmin/',
+                  year, '/',
+                  'PRISM_tmin_stable_4kmM2_',
+                  paste0(year, month[i]),
+                  '_bil.zip')
+    tmin <- tempfile()
+    download.file(ftp, tmin)
+    # Unzip:
+    tmin <- unzip(tmin)
+    # Convert to raster format:
+    tmin <- raster(tmin[1])
+    # Provide projection information:
+    crs(tmin) <- "+proj=longlat +datum=WGS84"
+    outList[[i]] <- crop(tmin, rStack[[1]])
+  }
+  writeRaster(overlay(stack(outList), fun = mean), 
+              paste0('tmin', year),
+              overwrite = TRUE)
+  }
+
+
+downloadPPTRasterMonthly <- function(year){
+  month = c('01', '02')
+  outList <- vector('list', length = 2)
+  for(i in 1:2){
+    ftp <- paste0('ftp://prism.oregonstate.edu/monthly/ppt/',
+                  year, '/',
+                  'PRISM_ppt_stable_4kmM3_',
+                  paste0(year, month[i]),
+                  '_bil.zip')
+    ppt <- tempfile()
+    download.file(ftp, ppt)
+    # Unzip:
+    ppt <- unzip(ppt)
+    # Convert to raster format:
+    ppt <- raster(ppt[1])
+    # Provide projection information:
+    crs(ppt) <- "+proj=longlat +datum=WGS84"
+    outList[[i]] <- crop(ppt, rStack[[1]])
+  }
+  writeRaster(overlay(stack(outList), fun = mean), 
+              paste0('ppt', year),
+              overwrite = TRUE)
+}
+
+years <- 2006:2016
+
+for(i in 1:length(years)){
+  downloadTminRasterMonthly(years[i])
+  downloadPPTRasterMonthly(years[i])
+}
+
+
 #---------------------------------------------------------------------------------------------------*
 # ---- GET CELL DATA AND SUMMARIZE SAMPLING EFFORT TO DATE AND CELL ----
 #---------------------------------------------------------------------------------------------------*
@@ -226,6 +285,8 @@ saveRDS(outList, 'eBirdSamplingList.RDS')
 
 winterEbirdByCell <- do.call('rbind', outList) %>%
   tbl_df 
+
+write.csv(winterEbirdByCell, 'eBirdSampling_WithDailyTempsPPT.csv', row.names = FALSE)
 
 #---------------------------------------------------------------------------------------------------*
 # ---- ATTACH RUBL SAMPLES FOR A GIVEN CELL AND DATE ----
