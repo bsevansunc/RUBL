@@ -285,6 +285,46 @@ swd <- do.call('rbind', samplingByYearList) %>%
   filter(!is.na(dev_hi), !is.na(effortDist))
 
 write.csv(swd, 'swdWinter.csv', row.names = FALSE)
+
+swdCombinedFun <- function(flockSize){
+  swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
+    tbl_df %>%
+    mutate(
+      protocol = ifelse(str_detect(protocol, 'Blitz'), 'blitz', 'eb'),
+      year = lubridate::year(date),
+      pa = ifelse(count >= flockSize, 1, 0)
+    ) %>%
+    filter(!is.na(dev_hi), !is.na(effortDist)) %>%
+    dplyr::select(-c(observationID, observer, lat, lon, date, time, nObservers)) %>%
+    group_by(cellAddress, year, protocol) %>%
+    summarize(
+      tLists = n(),
+      pLists = sum(pa),
+      durMinutes = sum(durMinutes),
+      effortDist = sum(effortDist)
+    ) %>%
+    left_join(
+      do.call('rbind', samplingByYearList) %>%
+        mutate(year = lubridate::year(date)) %>%
+        dplyr::select(cellAddress, year, dev_hi:tmin) %>%
+        distinct,
+      by = c('cellAddress', 'year')
+    ) %>%
+    mutate(pa = ifelse(pLists > 0, 1, 0)) %>%
+    dplyr::select(cellAddress, year, protocol, pa, dev_hi:tmin)
+  return(swdCombinedSamples)
+}
+
+#   
+# swdCombinedSamples %>%
+#   group_by(cellAddress) %>%
+#   filter(year %in% 2009:2011) %>%
+#   summarize(years = length(unique(year)),
+#             pLists = length(pLists > 0)) %>%
+#   filter(years == 3) %>%
+#   filter(pLists > 0) %>% View
+
+  
 # 
 # summary(swd)
 # table(swd$protocol)
@@ -345,10 +385,9 @@ write.csv(swd, 'swdWinter.csv', row.names = FALSE)
 #---------------------------------------------------------------------------------------------------*
 
 getRustyPaFrame <- function(minFlockSize, years, protocolChoice = 'all'){
-  paFrame <- swd %>%
-    filter(count >= minFlockSize | count == 0) %>%
-    filter(lubridate::year(date) %in% years) %>%
-    mutate(count = ifelse(count >= minFlockSize, 1, 0))
+  paFrame <- swdCombinedFun(minFlockSize) %>%
+    filter(year %in% years) %>%
+    ungroup
   if(protocolChoice == 'eb') {
     paFrame <- paFrame %>%
       filter(!(protocol == 'blitz' & count == 1))
@@ -359,6 +398,22 @@ getRustyPaFrame <- function(minFlockSize, years, protocolChoice = 'all'){
   }
   return(paFrame)
 }
+
+# getRustyPaFrame <- function(minFlockSize, years, protocolChoice = 'all'){
+#   paFrame <- swd %>%
+#     filter(count >= minFlockSize | count == 0) %>%
+#     filter(lubridate::year(date) %in% years) %>%
+#     mutate(count = ifelse(count >= minFlockSize, 1, 0))
+#   if(protocolChoice == 'eb') {
+#     paFrame <- paFrame %>%
+#       filter(!(protocol == 'blitz' & count == 1))
+#   }
+#   if(protocolChoice == 'blitz'){
+#     paFrame <- paFrame %>%
+#       filter(!(protocol == 'eb' & count == 1))
+#   }
+#   return(paFrame)
+# }
 # 
 # getRustyPaFrame <- function(minFlockSize, protocolChoice){
 #   # Filtering by flock size
@@ -402,7 +457,13 @@ getRustyPaFrame <- function(minFlockSize, years, protocolChoice = 'all'){
 #   return(rustyPa)
 # }
 
-mod <- glm(count~tmin*ppt + flood + forh + form + I(tmin^2), family = binomial,
-           data = getRustyPaFrame(50,2009:2011))
+# dTest <- getRustyPaFrame(100,2009:2011)
+
+mod <- glm(pa~scale(tmin)*scale(ppt) + scale(flood) +
+             scale(forh) + scale(form) + scale(dev_hi) + scale(dev_li) +
+             scale(grass) + scale(rowcrop) + scale(pasture) + scale(shrub) +
+             scale(weth) + scale(woodland) + scale(wetw) +
+             I(scale(tmin)^2) + I(scale(ppt)^2), family = binomial,
+           data = getRustyPaFrame(100,2009:2011))
 summary(mod)
-pscl::pR2(mod)  
+pscl::pR2(mod)
