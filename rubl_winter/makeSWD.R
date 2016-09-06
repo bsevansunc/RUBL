@@ -151,11 +151,11 @@ for(i in 1:length(years)){
 #---------------------------------------------------------------------------------------------------*
 # ---- GET CELL DATA AND SUMMARIZE SAMPLING EFFORT TO DATE AND CELL ----
 #---------------------------------------------------------------------------------------------------*
-# pathToRasterData <- 'C:/Users/Brian/Dropbox/rubl_12_15/
-pathToRasterData <- '/Users/bsevans/Dropbox/'
+# pathToRasterData <- 'C:/Users/Brian/Dropbox/rubl_12_15/'  # Helm
+pathToRasterData <- '/Users/bsevans/Dropbox/rubl_12_15/'   # MacBook Air
 # Get raster data:
 
-rStack <- loadEnv(paste(pathToRasterData, 'rubl_12_15/lc_asc', sep = '/'))
+rStack <- loadEnv(paste(pathToRasterData, 'lc_asc', sep = '/'))
 
 # Raster data to be used for addresses:
 
@@ -165,7 +165,7 @@ projInfo = projection(r)
 
 # Get rusty blackbird data:
 
-# note: wd, helm =  '/Users/Brian/Desktop/gits/RUBL/rubl_winter/'
+# note: wd, helm =  'C:/Users/Brian/Desktop/gits/RUBL/rubl_winter/'
 
 rustyLists <- read.csv('rublEbird.csv') %>%
   tbl_df %>%
@@ -189,8 +189,8 @@ rustyXobservations <- read.csv('rublEbird.csv') %>%
   
 # Get eBird list data:
 
-# pathToEbirdListData <- 'C:/Users/Brian/Dropbox/eBirdListData.csv'
-pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'
+# pathToEbirdListData <- 'C:/Users/Brian/Dropbox/eBirdListData.csv'   # Helm
+pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'     # MacBook Air
 
 eBirdLists <- read.csv(pathToEbirdListData) %>%
   tbl_df %>%
@@ -266,8 +266,8 @@ samplingByYearList <- vector('list', length = length(years))
 for(i in 1:length(years)){
   samplingSubset <- eBirdSamplingEnv %>%
     filter(year == years[i])
-  pptR <- raster(paste0(pathToRasterData, 'ppt',years[i]))
-  tminR <- raster(paste0(pathToRasterData, 'tmin',years[i]))
+  pptR <- raster(paste0(pathToRasterData, 'climateRasters/ppt',years[i]))
+  tminR <- raster(paste0(pathToRasterData, 'climateRasters/tmin',years[i]))
   samplingSubset$ppt <- extract(pptR, cbind(samplingSubset$lon, samplingSubset$lat))
   samplingSubset$tmin <- extract(tminR, cbind(samplingSubset$lon, samplingSubset$lat))
   samplingByYearList[[i]] <- samplingSubset %>%
@@ -279,12 +279,14 @@ swd <- do.call('rbind', samplingByYearList) %>%
   tbl_df %>%
   dplyr::select(-c(observationID, observer, lat, lon, nObservers, cellAddress)) %>%
   mutate(protocol = ifelse(
-    str_detect(protocol, 'Blitz'),
+    stringr::str_detect(protocol, 'Blitz'),
     'blitz', 'eb'
   )) %>%
   filter(!is.na(dev_hi), !is.na(effortDist))
 
-write.csv(swd, 'swdWinter.csv', row.names = FALSE)
+# write.csv(swd, 'swdWinter.csv', row.names = FALSE)
+# 
+# swd <- read.csv('swdWinter.csv')
 
 swdCombinedFun <- function(flockSize){
   swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
