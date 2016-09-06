@@ -3,6 +3,7 @@
 library(sp)
 library(raster)
 library(dplyr)
+library(stringr)
 
 options(stringsAsFactors = FALSE)
 
@@ -466,6 +467,20 @@ mod <- glm(pa~scale(tmin)*scale(ppt) + scale(flood) +
              scale(grass) + scale(rowcrop) + scale(pasture) + scale(shrub) +
              scale(weth) + scale(woodland) + scale(wetw) +
              I(scale(tmin)^2) + I(scale(ppt)^2), family = binomial,
-           data = getRustyPaFrame(100,2009:2011))
+           data = getRustyPaFrame(100,2009))
 summary(mod)
 pscl::pR2(mod)
+
+test <- lme4::glmer(pa ~ scale(tmin)*scale(ppt) + 
+                      I(scale(tmin)^2) + I(scale(ppt)^2) + 
+                      scale(flood) + scale(forh) + scale(form) +
+                      scale(dev_hi) + scale(dev_li) + 
+                      scale(grass) + scale(rowcrop) +
+                      scale(pasture) + scale(shrub) +
+                      scale(weth) + scale(woodland) + scale(wetw) +
+                     (1|year),
+                   data = getRustyPaFrame(100,2009:2011) %>%
+                     mutate(year = factor(year)),
+                   family = binomial,
+                   control = lme4::glmerControl(optimizer = "bobyqa"),
+                   nAGQ = 10)
