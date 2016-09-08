@@ -191,7 +191,7 @@ rustyXobservations <- read.csv('rublEbird.csv') %>%
 # Get eBird list data:
 
 # pathToEbirdListData <- 'C:/Users/Brian/Dropbox/eBirdListData.csv'   # Helm
-pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'     # MacBook Air
+# pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'     # MacBook Air
 
 eBirdLists <- read.csv(pathToEbirdListData) %>%
   tbl_df %>%
@@ -314,7 +314,7 @@ swdCombinedFun <- function(flockSize){
       by = c('cellAddress', 'year')
     ) %>%
     mutate(pa = ifelse(pLists > 0, 1, 0)) %>%
-    dplyr::select(cellAddress, year, protocol, pa, dev_hi:tmin)
+    dplyr::select(cellAddress, year, protocol, pLists, tLists, pa, dev_hi:tmin)
   return(swdCombinedSamples)
 }
 
