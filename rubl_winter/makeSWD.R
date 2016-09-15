@@ -153,10 +153,11 @@ for(i in 1:length(years)){
 # ---- GET CELL DATA AND SUMMARIZE SAMPLING EFFORT TO DATE AND CELL ----
 #---------------------------------------------------------------------------------------------------*
 # pathToRasterData <- 'C:/Users/Brian/Dropbox/rubl_12_15/'  # Helm
-pathToRasterData <- '/Users/bsevans/Dropbox/rubl_12_15/'   # MacBook Air
+# pathToRasterData <- '/Users/bsevans/Dropbox/rubl_12_15/'   # MacBook Air
+pathToRasterData <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/' # Thinkpad
 # Get raster data:
 
-rStack <- loadEnv(paste(pathToRasterData, 'lc_asc', sep = '/'))
+rStack <- loadEnv(paste0(pathToRasterData, 'lc_asc'))
 
 # Raster data to be used for addresses:
 
@@ -166,7 +167,9 @@ projInfo = projection(r)
 
 # Get rusty blackbird data:
 
-# note: wd, helm =  'C:/Users/Brian/Desktop/gits/RUBL/rubl_winter/'
+# note: 
+# wd, helm =  'C:/Users/Brian/Desktop/gits/RUBL/rubl_winter/'
+# wd, thinkPad = 'C:/Users/Default.Default-THINK/Desktop/gits/RUBL/rubl_winter'
 
 rustyLists <- read.csv('rublEbird.csv') %>%
   tbl_df %>%
@@ -191,7 +194,8 @@ rustyXobservations <- read.csv('rublEbird.csv') %>%
 # Get eBird list data:
 
 # pathToEbirdListData <- 'C:/Users/Brian/Dropbox/eBirdListData.csv'   # Helm
-# pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'     # MacBook Air
+# pathToEbirdListData <- 'C:/Users/Default.Default-THINK/Dropbox/eBirdListData.csv' # ThinkPad
+# pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'   # MacBook Air
 
 eBirdLists <- read.csv(pathToEbirdListData) %>%
   tbl_df %>%
@@ -288,16 +292,47 @@ swd <- do.call('rbind', samplingByYearList) %>%
 # write.csv(swd, 'swdWinter.csv', row.names = FALSE)
 # 
 # swd <- read.csv('swdWinter.csv')
+# 
+# swdCombinedFun <- function(flockSize){
+#   swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
+#     tbl_df %>%
+#     mutate(
+#       protocol = ifelse(str_detect(protocol, 'Blitz'), 'blitz', 'eb'),
+#       year = lubridate::year(date),
+#       pa = ifelse(count >= flockSize, 1, 0)
+#     ) %>%
+#     filter(!is.na(dev_hi), !is.na(effortDist)) %>%
+#     dplyr::select(-c(observationID, observer, lat, lon, date, time, nObservers)) %>%
+#     group_by(cellAddress, year, protocol) %>%
+#     summarize(
+#       tLists = n(),
+#       pLists = sum(pa),
+#       durMinutes = sum(durMinutes),
+#       effortDist = sum(effortDist)
+#     ) %>%
+#     left_join(
+#       do.call('rbind', samplingByYearList) %>%
+#         mutate(year = lubridate::year(date)) %>%
+#         dplyr::select(cellAddress, year, dev_hi:tmin) %>%
+#         distinct,
+#       by = c('cellAddress', 'year')
+#     ) %>%
+#     mutate(pa = ifelse(pLists > 0, 1, 0)) %>%
+#     dplyr::select(cellAddress, year, protocol, pLists, tLists, pa, dev_hi:tmin)
+#   return(swdCombinedSamples)
+# }
 
-swdCombinedFun <- function(flockSize){
+
+swdCombinedFun <- function(flockSizeMin, flockSizeMax){
   swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
     tbl_df %>%
     mutate(
       protocol = ifelse(str_detect(protocol, 'Blitz'), 'blitz', 'eb'),
       year = lubridate::year(date),
-      pa = ifelse(count >= flockSize, 1, 0)
+      pa = ifelse(count >= flockSizeMin & count <= flockSizeMax, 1, 0)
     ) %>%
-    filter(!is.na(dev_hi), !is.na(effortDist)) %>%
+    filter(!is.na(dev_hi), !is.na(effortDist),
+           !(pa == 0 & count > 0)) %>%
     dplyr::select(-c(observationID, observer, lat, lon, date, time, nObservers)) %>%
     group_by(cellAddress, year, protocol) %>%
     summarize(
@@ -317,6 +352,7 @@ swdCombinedFun <- function(flockSize){
     dplyr::select(cellAddress, year, protocol, pLists, tLists, pa, dev_hi:tmin)
   return(swdCombinedSamples)
 }
+
 
 #   
 # swdCombinedSamples %>%
@@ -387,8 +423,8 @@ swdCombinedFun <- function(flockSize){
 # ---- ATTACH RUBL SAMPLES FOR A GIVEN CELL AND DATE ----
 #---------------------------------------------------------------------------------------------------*
 
-getRustyPaFrame <- function(minFlockSize, years, protocolChoice = 'all'){
-  paFrame <- swdCombinedFun(minFlockSize) %>%
+getRustyPaFrame <- function(minFlockSize,maxFlockSize, years, protocolChoice = 'all'){
+  paFrame <- swdCombinedFun(minFlockSize, maxFlockSize) %>%
     filter(year %in% years) %>%
     ungroup
   if(protocolChoice == 'eb') {
@@ -484,3 +520,5 @@ test <- lme4::glmer(pa ~ scale(tmin)*scale(ppt) +
                    family = binomial,
                    control = lme4::glmerControl(optimizer = "bobyqa"),
                    nAGQ = 10)
+
+
