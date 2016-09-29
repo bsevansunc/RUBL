@@ -325,5 +325,39 @@ getRustyPaFrame <- function(minFlockSize,maxFlockSize, years, protocolChoice = '
   return(paFrame)
 }
 
+# NOTE! I NEED TO SUMMARIZE BY CELL ADDRESS SUCH THAT THERE IS ONLY ONE SAMPLE PER CELL FOR A GIVEN YEAR! SHOULD ALSO RANDOMLY SELECT FROM THE LIST OF DATES THE TEMP FOR CELLS WITH MORE THAN ONE OBSERVATION!
+
+#---------------------------------------------------------------------------------------------------*
+# ---- Add K ----
+#---------------------------------------------------------------------------------------------------*
+
+inData <- getRustyPaFrame(20, 100, 209:2011)
+
+# Function to prepare swd files:
+
+prepSWD <- function(inData){
+  swdRUBL <- inData %>%
+    filter(pa == 1)
+  swdBG <- inData %>%
+    filter(pa == 0)
+  swd <- list(length = 3)
+  flockSizes = as.character(unique(swdRUBL[[1]]$sp))
+  
+  for(i in 1:length(swdRUBL)){
+    swd[[i]] <- list(length = 3)
+    for(j in 1:3){
+      swdBG$k <- kfold(swdBG, k = 5)
+      swdFS <- swdRUBL[[i]] %>%
+        dplyr::filter(sp == flockSizes[j]) %>%
+        dplyr::mutate(sp = 1)
+      swdFS$k <- kfold(swdFS, k = 5)
+      swd[[i]][[j]] <- rbind(swdFS,swdBG)
+    }
+    names(swd[[i]]) <- flockSizes
+  }
+  names(swd) <- c('all','bz','eb')
+  return(swd)
+}
+
 
 
