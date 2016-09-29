@@ -154,7 +154,7 @@ for(i in 1:length(years)){
 #---------------------------------------------------------------------------------------------------*
 # pathToRasterData <- 'C:/Users/Brian/Dropbox/rubl_12_15/'  # Helm
 # pathToRasterData <- '/Users/bsevans/Dropbox/rubl_12_15/'   # MacBook Air
-pathToRasterData <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/' # Thinkpad
+# pathToRasterData <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/' # Thinkpad
 # Get raster data:
 
 rStack <- loadEnv(paste0(pathToRasterData, 'lc_asc'))
@@ -226,20 +226,6 @@ eBirdLists$cellAddress <- cellFromXY(
     SpatialPoints(proj4string = CRS(projInfo)) 
 )
 
-# Get sampling summaries (by date and cell address):
-
-# eBirdSampling <- eBirdLists %>%
-#   group_by(cellAddress, date) %>%
-#   summarize(
-#     lon = mean(lon),
-#     lat = mean(lat),
-#     nLists = n(),
-#     durMinutes = sum(durMinutes),
-#     effortDist = sum(effortDist)) %>%
-#   filter(!is.na(cellAddress)) %>%
-#   ungroup %>%
-#   mutate(date = as.Date(date))
-
 # Extract raster land cover data by cell ID:
 
 envByCell <- data.frame(
@@ -289,39 +275,6 @@ swd <- do.call('rbind', samplingByYearList) %>%
   )) %>%
   filter(!is.na(dev_hi), !is.na(effortDist))
 
-# write.csv(swd, 'swdWinter.csv', row.names = FALSE)
-# 
-# swd <- read.csv('swdWinter.csv')
-# 
-# swdCombinedFun <- function(flockSize){
-#   swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
-#     tbl_df %>%
-#     mutate(
-#       protocol = ifelse(str_detect(protocol, 'Blitz'), 'blitz', 'eb'),
-#       year = lubridate::year(date),
-#       pa = ifelse(count >= flockSize, 1, 0)
-#     ) %>%
-#     filter(!is.na(dev_hi), !is.na(effortDist)) %>%
-#     dplyr::select(-c(observationID, observer, lat, lon, date, time, nObservers)) %>%
-#     group_by(cellAddress, year, protocol) %>%
-#     summarize(
-#       tLists = n(),
-#       pLists = sum(pa),
-#       durMinutes = sum(durMinutes),
-#       effortDist = sum(effortDist)
-#     ) %>%
-#     left_join(
-#       do.call('rbind', samplingByYearList) %>%
-#         mutate(year = lubridate::year(date)) %>%
-#         dplyr::select(cellAddress, year, dev_hi:tmin) %>%
-#         distinct,
-#       by = c('cellAddress', 'year')
-#     ) %>%
-#     mutate(pa = ifelse(pLists > 0, 1, 0)) %>%
-#     dplyr::select(cellAddress, year, protocol, pLists, tLists, pa, dev_hi:tmin)
-#   return(swdCombinedSamples)
-# }
-
 
 swdCombinedFun <- function(flockSizeMin, flockSizeMax){
   swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
@@ -353,72 +306,6 @@ swdCombinedFun <- function(flockSizeMin, flockSizeMax){
   return(swdCombinedSamples)
 }
 
-
-#   
-# swdCombinedSamples %>%
-#   group_by(cellAddress) %>%
-#   filter(year %in% 2009:2011) %>%
-#   summarize(years = length(unique(year)),
-#             pLists = length(pLists > 0)) %>%
-#   filter(years == 3) %>%
-#   filter(pLists > 0) %>% View
-
-  
-# 
-# summary(swd)
-# table(swd$protocol)
-
-# Get winter blitz time window samples:
-# 
-# winterSampling <- eBirdSamplingEnv %>%
-#   mutate(month = lubridate::month(date),
-#          day = lubridate::day(date)) %>%
-#   filter(month == 1|
-#            (month == 2 & day <15),
-#          lubridate::year(date) < 2015) %>%
-#   dplyr::select(-c(month, day))
-
-# Get tmin and ppt for a given date:
-# 
-# dates <- winterSampling$date %>% unique
-# 
-# outList <- vector('list', length = length(dates))
-# 
-# for(i in 1:length(dates)){
-#   # Date specification:
-#   date <- as.Date(dates[i])
-#   year <- year(date)
-#   month <- month(date)
-#   day <- day(date)
-#   # Get rasters for date:
-#   tmin <- downloadTminRaster(year, month, day)
-#   ppt <- downloadPPTRaster(year, month, day)
-# 
-#   # Subset sampling data to the selected date:
-#   winterSamplingSubset <- winterSampling %>%
-#     filter(date == dates[i])
-#   # Extract raster data
-#   winterSamplingSubset$tmin <- extract(
-#     tmin,
-#     data.frame(winterSamplingSubset$lon,
-#                winterSamplingSubset$lat)
-#   )
-#   winterSamplingSubset$ppt <- extract(
-#     ppt,
-#     data.frame(winterSamplingSubset$lon,
-#                winterSamplingSubset$lat)
-#   )
-#   # Return as list
-#   outList[[i]] <- winterSamplingSubset
-# }
-# 
-# saveRDS(outList, 'eBirdSamplingList.RDS')
-# 
-# winterEbirdByCell <- do.call('rbind', outList) %>%
-#   tbl_df 
-# 
-# write.csv(winterEbirdByCell, 'eBirdSampling_WithDailyTempsPPT.csv', row.names = FALSE)
-
 #---------------------------------------------------------------------------------------------------*
 # ---- ATTACH RUBL SAMPLES FOR A GIVEN CELL AND DATE ----
 #---------------------------------------------------------------------------------------------------*
@@ -438,87 +325,5 @@ getRustyPaFrame <- function(minFlockSize,maxFlockSize, years, protocolChoice = '
   return(paFrame)
 }
 
-# getRustyPaFrame <- function(minFlockSize, years, protocolChoice = 'all'){
-#   paFrame <- swd %>%
-#     filter(count >= minFlockSize | count == 0) %>%
-#     filter(lubridate::year(date) %in% years) %>%
-#     mutate(count = ifelse(count >= minFlockSize, 1, 0))
-#   if(protocolChoice == 'eb') {
-#     paFrame <- paFrame %>%
-#       filter(!(protocol == 'blitz' & count == 1))
-#   }
-#   if(protocolChoice == 'blitz'){
-#     paFrame <- paFrame %>%
-#       filter(!(protocol == 'eb' & count == 1))
-#   }
-#   return(paFrame)
-# }
-# 
-# getRustyPaFrame <- function(minFlockSize, protocolChoice){
-#   # Filtering by flock size
-#   
-#   rustyListsSubset <- rustyLists %>%
-#     filter(count >= minFlockSize)
-#   
-# #   if(protocolChoice == 'eBird'){
-# #     rustyListsSubset <- rustyListsSubset %>%
-# #       filter(str_detect(protocol, 'eBird'))
-# #   }
-#   
-#   rustyListsSubset$cellAddress <- cellFromXY(
-#     r,
-#     rustyListsSubset %>%
-#       dplyr::select(lon, lat) %>%
-#       data.frame %>%
-#       SpatialPoints(proj4string = CRS(projInfo)) 
-#   )
-#   
-#   rustyPa <- winterEbirdByCell %>%
-#     left_join(
-#       rustyListsSubset %>%
-#         group_by(cellAddress, date) %>%
-#         summarize(
-#           nListsR = n(),
-#           durMinutesR = sum(durMinutes),
-#           effortDistR = sum(effortDist)
-#         ) %>%
-#         filter(!is.na(cellAddress)) %>%
-#         ungroup %>%
-#         mutate(date = as.Date(date)),
-#       by = c('cellAddress', 'date')
-#     ) %>% 
-#     mutate(
-#       nListsR = ifelse(is.na(nListsR), 0, nListsR),
-#       durMinutesR = ifelse(is.na(durMinutesR), 0, durMinutesR),
-#       effortDistR =  ifelse(is.na(effortDistR), 0, effortDistR),
-#       pa = ifelse(nListsR == 0, 0, 1)
-#     )
-#   return(rustyPa)
-# }
-
-# dTest <- getRustyPaFrame(100,2009:2011)
-
-mod <- glm(pa~scale(tmin)*scale(ppt) + scale(flood) +
-             scale(forh) + scale(form) + scale(dev_hi) + scale(dev_li) +
-             scale(grass) + scale(rowcrop) + scale(pasture) + scale(shrub) +
-             scale(weth) + scale(woodland) + scale(wetw) +
-             I(scale(tmin)^2) + I(scale(ppt)^2), family = binomial,
-           data = getRustyPaFrame(100,2009))
-summary(mod)
-pscl::pR2(mod)
-
-test <- lme4::glmer(pa ~ scale(tmin)*scale(ppt) + 
-                      I(scale(tmin)^2) + I(scale(ppt)^2) + 
-                      scale(flood) + scale(forh) + scale(form) +
-                      scale(dev_hi) + scale(dev_li) + 
-                      scale(grass) + scale(rowcrop) +
-                      scale(pasture) + scale(shrub) +
-                      scale(weth) + scale(woodland) + scale(wetw) +
-                     (1|year),
-                   data = getRustyPaFrame(100,2009:2011) %>%
-                     mutate(year = factor(year)),
-                   family = binomial,
-                   control = lme4::glmerControl(optimizer = "bobyqa"),
-                   nAGQ = 10)
 
 
