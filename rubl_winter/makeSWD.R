@@ -297,37 +297,6 @@ swdCombinedFun <- function(flockSizeMin, flockSizeMax){
     dplyr::select(-c(cellAddress))
 }
 
-# 
-# swdCombinedFun <- function(flockSizeMin, flockSizeMax){
-#   swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
-#     tbl_df %>%
-#     mutate(
-#       protocol = ifelse(str_detect(protocol, 'Blitz'), 'blitz', 'eb'),
-#       year = lubridate::year(date),
-#       pa = ifelse(count >= flockSizeMin & count <= flockSizeMax, 1, 0)
-#     ) %>%
-#     filter(!is.na(dev_hi), !is.na(effortDist),
-#            !(pa == 0 & count > 0)) %>%
-#     dplyr::select(-c(observationID, observer, lat, lon, date, time, nObservers)) %>%
-#     group_by(cellAddress, year, protocol) %>%
-#     summarize(
-#       tLists = n(),
-#       pLists = sum(pa),
-#       durMinutes = sum(durMinutes),
-#       effortDist = sum(effortDist)
-#     ) %>%
-#     left_join(
-#       do.call('rbind', samplingByYearList) %>%
-#         mutate(year = lubridate::year(date)) %>%
-#         dplyr::select(cellAddress, year, dev_hi:tmin) %>%
-#         distinct,
-#       by = c('cellAddress', 'year')
-#     ) %>%
-#     mutate(pa = ifelse(pLists > 0, 1, 0)) %>%
-#     dplyr::select(cellAddress, year, protocol, pLists, tLists, pa, dev_hi:tmin)
-#   return(swdCombinedSamples)
-# }
-
 #---------------------------------------------------------------------------------------------------*
 # ---- ATTACH RUBL SAMPLES FOR A GIVEN CELL AND DATE ----
 #---------------------------------------------------------------------------------------------------*
