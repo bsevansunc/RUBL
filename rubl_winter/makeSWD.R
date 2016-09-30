@@ -256,55 +256,77 @@ samplingByYearList <- vector('list', length = length(years))
 
 for(i in 1:length(years)){
   samplingSubset <- eBirdSamplingEnv %>%
-    filter(year == years[i])
+    dplyr::filter(year == years[i]) %>%
+    dplyr::select(cellAddress, year, protocol, count, dev_hi:woodland) %>%
+    mutate(protocol = ifelse(
+      stringr::str_detect(protocol, 'Blitz'), 'blitz', 'eb')) %>%
+    group_by(cellAddress, protocol) %>%
+    dplyr::mutate(count = max(count)) %>%
+    ungroup %>%
+    distinct
+  # Get precipitation and min temperature rasters:
   pptR <- raster(paste0(pathToRasterData, 'climateRasters/ppt',years[i]))
   tminR <- raster(paste0(pathToRasterData, 'climateRasters/tmin',years[i]))
-  samplingSubset$ppt <- extract(pptR, cbind(samplingSubset$lon, samplingSubset$lat))
-  samplingSubset$tmin <- extract(tminR, cbind(samplingSubset$lon, samplingSubset$lat))
+  # Extract precip and temperature to points (by cell address):
+  samplingSubset$ppt <- extract(pptR, samplingSubset$cellAddress) #cbind(samplingSubset$lon, samplingSubset$lat))
+  samplingSubset$tmin <- extract(tminR, samplingSubset$cellAddress) #cbind(samplingSubset$lon, samplingSubset$lat))
+  # Output list item, removing NA tmin and ppt (outside of extent)
   samplingByYearList[[i]] <- samplingSubset %>%
-    filter(!is.na(tmin), !is.na(ppt)) %>%
-    dplyr::select(-year)
+    dplyr::filter(!is.na(tmin), !is.na(ppt)) #%>%
+#     dplyr::select(-year)
 }
 
-swd <- do.call('rbind', samplingByYearList) %>%
-  tbl_df %>%
-  dplyr::select(-c(observationID, observer, lat, lon, nObservers, cellAddress)) %>%
-  mutate(protocol = ifelse(
-    stringr::str_detect(protocol, 'Blitz'),
-    'blitz', 'eb'
-  )) %>%
-  filter(!is.na(dev_hi), !is.na(effortDist))
-
+swd <- bind_rows(samplingByYearList)
+# 
+# swd <- do.call('rbind', samplingByYearList) %>%
+#   tbl_df #%>%
+#   dplyr::select(-c(observationID, observer, lat, lon, nObservers, cellAddress)) %>%
+#   mutate(protocol = ifelse(
+#     stringr::str_detect(protocol, 'Blitz'),
+#     'blitz', 'eb'
+#   )) %>%
+#   filter(!is.na(dev_hi))#, !is.na(effortDist))
 
 swdCombinedFun <- function(flockSizeMin, flockSizeMax){
-  swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
-    tbl_df %>%
+  bind_rows(samplingByYearList) %>%
     mutate(
-      protocol = ifelse(str_detect(protocol, 'Blitz'), 'blitz', 'eb'),
-      year = lubridate::year(date),
-      pa = ifelse(count >= flockSizeMin & count <= flockSizeMax, 1, 0)
-    ) %>%
-    filter(!is.na(dev_hi), !is.na(effortDist),
-           !(pa == 0 & count > 0)) %>%
-    dplyr::select(-c(observationID, observer, lat, lon, date, time, nObservers)) %>%
-    group_by(cellAddress, year, protocol) %>%
-    summarize(
-      tLists = n(),
-      pLists = sum(pa),
-      durMinutes = sum(durMinutes),
-      effortDist = sum(effortDist)
-    ) %>%
-    left_join(
-      do.call('rbind', samplingByYearList) %>%
-        mutate(year = lubridate::year(date)) %>%
-        dplyr::select(cellAddress, year, dev_hi:tmin) %>%
-        distinct,
-      by = c('cellAddress', 'year')
-    ) %>%
-    mutate(pa = ifelse(pLists > 0, 1, 0)) %>%
-    dplyr::select(cellAddress, year, protocol, pLists, tLists, pa, dev_hi:tmin)
-  return(swdCombinedSamples)
+      pa = ifelse(count >= flockSizeMin & count <= flockSizeMax, 1,
+                  ifelse(count > 0, 999, 0))) %>%
+    filter(pa != 999,
+           !is.na(dev_hi)) %>%
+    dplyr::select(-c(cellAddress))
 }
+
+# 
+# swdCombinedFun <- function(flockSizeMin, flockSizeMax){
+#   swdCombinedSamples <- do.call('rbind', samplingByYearList) %>%
+#     tbl_df %>%
+#     mutate(
+#       protocol = ifelse(str_detect(protocol, 'Blitz'), 'blitz', 'eb'),
+#       year = lubridate::year(date),
+#       pa = ifelse(count >= flockSizeMin & count <= flockSizeMax, 1, 0)
+#     ) %>%
+#     filter(!is.na(dev_hi), !is.na(effortDist),
+#            !(pa == 0 & count > 0)) %>%
+#     dplyr::select(-c(observationID, observer, lat, lon, date, time, nObservers)) %>%
+#     group_by(cellAddress, year, protocol) %>%
+#     summarize(
+#       tLists = n(),
+#       pLists = sum(pa),
+#       durMinutes = sum(durMinutes),
+#       effortDist = sum(effortDist)
+#     ) %>%
+#     left_join(
+#       do.call('rbind', samplingByYearList) %>%
+#         mutate(year = lubridate::year(date)) %>%
+#         dplyr::select(cellAddress, year, dev_hi:tmin) %>%
+#         distinct,
+#       by = c('cellAddress', 'year')
+#     ) %>%
+#     mutate(pa = ifelse(pLists > 0, 1, 0)) %>%
+#     dplyr::select(cellAddress, year, protocol, pLists, tLists, pa, dev_hi:tmin)
+#   return(swdCombinedSamples)
+# }
 
 #---------------------------------------------------------------------------------------------------*
 # ---- ATTACH RUBL SAMPLES FOR A GIVEN CELL AND DATE ----
@@ -312,17 +334,17 @@ swdCombinedFun <- function(flockSizeMin, flockSizeMax){
 
 getRustyPaFrame <- function(minFlockSize,maxFlockSize, years, protocolChoice = 'all'){
   paFrame <- swdCombinedFun(minFlockSize, maxFlockSize) %>%
-    filter(year %in% years) %>%
-    ungroup
+    filter(year %in% years)
   if(protocolChoice == 'eb') {
     paFrame <- paFrame %>%
-      filter(!(protocol == 'blitz' & count == 1))
+      filter(!(protocol == 'blitz' & pa == 1))
   }
   if(protocolChoice == 'blitz'){
     paFrame <- paFrame %>%
-      filter(!(protocol == 'eb' & count == 1))
+      filter(!(protocol == 'eb' & pa == 1))
   }
-  return(paFrame)
+  return(paFrame %>%
+           select(pa, dev_hi:tmin))
 }
 
 # NOTE! I NEED TO SUMMARIZE BY CELL ADDRESS SUCH THAT THERE IS ONLY ONE SAMPLE PER CELL FOR A GIVEN YEAR! SHOULD ALSO RANDOMLY SELECT FROM THE LIST OF DATES THE TEMP FOR CELLS WITH MORE THAN ONE OBSERVATION!
@@ -331,33 +353,13 @@ getRustyPaFrame <- function(minFlockSize,maxFlockSize, years, protocolChoice = '
 # ---- Add K ----
 #---------------------------------------------------------------------------------------------------*
 
-inData <- getRustyPaFrame(20, 100, 209:2011)
+# Function to add k to swd file:
 
-# Function to prepare swd files:
-
-prepSWD <- function(inData){
-  swdRUBL <- inData %>%
-    filter(pa == 1)
-  swdBG <- inData %>%
-    filter(pa == 0)
-  swd <- list(length = 3)
-  flockSizes = as.character(unique(swdRUBL[[1]]$sp))
-  
-  for(i in 1:length(swdRUBL)){
-    swd[[i]] <- list(length = 3)
-    for(j in 1:3){
-      swdBG$k <- kfold(swdBG, k = 5)
-      swdFS <- swdRUBL[[i]] %>%
-        dplyr::filter(sp == flockSizes[j]) %>%
-        dplyr::mutate(sp = 1)
-      swdFS$k <- kfold(swdFS, k = 5)
-      swd[[i]][[j]] <- rbind(swdFS,swdBG)
-    }
-    names(swd[[i]]) <- flockSizes
-  }
-  names(swd) <- c('all','bz','eb')
-  return(swd)
+prepSWD <- function(minFlockSize, maxFlockSize, years, protocolChoice = 'all'){
+  paFrame <- getRustyPaFrame(minFlockSize, maxFlockSize, years, protocolChoice) %>%
+    mutate(k = dismo::kfold(x = pa, k = 5, by = pa))
 }
+ 
 
 
 
