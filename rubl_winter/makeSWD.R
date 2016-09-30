@@ -4,6 +4,7 @@ library(sp)
 library(raster)
 library(dplyr)
 library(stringr)
+library(dismo)
 
 options(stringsAsFactors = FALSE)
 
