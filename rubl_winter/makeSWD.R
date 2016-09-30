@@ -332,7 +332,7 @@ swdCombinedFun <- function(flockSizeMin, flockSizeMax){
 # ---- ATTACH RUBL SAMPLES FOR A GIVEN CELL AND DATE ----
 #---------------------------------------------------------------------------------------------------*
 
-getRustyPaFrame <- function(minFlockSize,maxFlockSize, years, protocolChoice = 'all'){
+prepSWD <- function(minFlockSize,maxFlockSize, years, protocolChoice = 'all'){
   paFrame <- swdCombinedFun(minFlockSize, maxFlockSize) %>%
     filter(year %in% years)
   if(protocolChoice == 'eb') {
@@ -343,23 +343,13 @@ getRustyPaFrame <- function(minFlockSize,maxFlockSize, years, protocolChoice = '
     paFrame <- paFrame %>%
       filter(!(protocol == 'eb' & pa == 1))
   }
-  return(paFrame %>%
-           select(pa, dev_hi:tmin))
+  # Add k to paFrame and return output
+  return(
+    paFrame %>%
+      select(pa, dev_hi:tmin) %>%
+      mutate(k = dismo::kfold(x = pa, k = 5, by = pa))
+  )
 }
-
-# NOTE! I NEED TO SUMMARIZE BY CELL ADDRESS SUCH THAT THERE IS ONLY ONE SAMPLE PER CELL FOR A GIVEN YEAR! SHOULD ALSO RANDOMLY SELECT FROM THE LIST OF DATES THE TEMP FOR CELLS WITH MORE THAN ONE OBSERVATION!
-
-#---------------------------------------------------------------------------------------------------*
-# ---- Add K ----
-#---------------------------------------------------------------------------------------------------*
-
-# Function to add k to swd file:
-
-prepSWD <- function(minFlockSize, maxFlockSize, years, protocolChoice = 'all'){
-  paFrame <- getRustyPaFrame(minFlockSize, maxFlockSize, years, protocolChoice) %>%
-    mutate(k = dismo::kfold(x = pa, k = 5, by = pa))
-}
- 
 
 
 
