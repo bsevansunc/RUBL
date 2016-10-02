@@ -2,323 +2,802 @@
 # ---- SET-UP ----
 #===================================================================================================*
 
-# Set file paths
-
-pathToFiles <- 'C:/Users/Brian/Dropbox/rubl_12_15/'
-
-pathToSource <- 'C:/Users/Brian/Desktop/gits/RUBL/'
-
-pathToFiles <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/'
-
-# pathToOutput <- ''
-
-# Load libraries:
+# # Set file paths
+# 
+# pathToFiles <- 'C:/Users/Brian/Dropbox/rubl_12_15/'
+# 
+# pathToSource <- 'C:/Users/Brian/Desktop/gits/RUBL/'
+# 
+# pathToFiles <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/'
+# 
+# # pathToOutput <- ''
+# 
+# # Load libraries:
 
 library(dplyr) ; library(tidyr); library(stringr)
 library(sp) ; library(raster) ; library(dismo) 
 
-# Load environment data:
-
-source(str_c(pathToSource, 'load_env.R'))
-
-env.stack <- loadEnv(str_c(pathToFiles, 'lc_asc'))
-
-# Remove tmin and precipitation:
-
-env.stack <- env.stack[[c(1:7, 9:10, 12:15)]]
-
-# Find the SWD data (searches for and ID's all files that end in ".csv":
-
-swdData <- list.files(
-  str_c(pathToSource,'rubl_spring/spring'),
-  pattern='\\.csv$', full=T
-)
-
-# Add data to memory:
-
-swdList <- lapply(swdData, read.csv)
-
-rubl <- swdList[[1]] %>% dplyr::arrange(date)
-bg <- swdList[[2]] %>%
-  dplyr::mutate(sp = 'bg',
-                count = 0,
-                protocol = 'ebird') %>%
-  dplyr::select(sp, protocol,lat, lon, date, count)
-
-
-# Project pts and extract lcData:
-
-extractLcToPts <- function(ptFile){
-  spPts <- SpatialPoints(ptFile[,c('lon','lat')],
-                proj4string = CRS(raster::projection(env.stack)))
-  ptsEnv <- raster::extract(env.stack, spPts) %>%
-    as.data.frame(na.rm = TRUE)
-  envOut <- cbind(dplyr::select(ptFile,sp:count), ptsEnv) %>%
-    filter(!is.na(dev_hi))
-}
-
-swd <- bind_rows(extractLcToPts(rubl) %>%
-                   mutate(count = as.numeric(count)),
-                 extractLcToPts(bg))
-
-#---------------------------------------------------------------------------------------------------*
-# ---- PRECIPITATION AND MINIMUM TEMPERATURE ----
-#---------------------------------------------------------------------------------------------------*
-
-# Add tmin and ppt data for a given date to the table:
-
-dates <- swd %>%
-  select(date) %>%
-  distinct %>%
-  arrange(date) %>%
-  .$date
-
-# Function to get a stack of ppt and tmin rasters associated with a given date:
-
-date <- '2014-03-01'
-
-
-rasterPrepTminPpt <- function(date){
-  # Get ppt and tmin rasters for given date:
-  
-  rasterDirTmin <- 'C:/Users/Brian/Desktop/rubl_summer_2016/minTempRasters/tmin_'
-  rasterDirPPt <- 'C:/Users/Brian/Desktop/rubl_summer_2016/pptRasters/ppt_'
-  
-  raster('C:/Users/Brian/Desktop/rubl_summer_2016/minTempRasters/tmin_2014-03-22')
-  
-  tminR <- raster(paste0(rasterDirTmin, date))
-  pptR <- raster(paste0(rasterDirPPt, date))
-  
-  # Create a raster stack of raster layers:
-  
-  tminPptStack = stack(tminR, pptR)
-  
-  # Add raster stack values to memory:
-  
-  values(tminPptStack) = getValues(tminPptStack)
-  
-  # Add projection information to the raster stack:
-  
-  newproj = CRS('+proj=longlat +datum=WGS84')
-  
-  projection(env.stack) = newproj
-  names(tminPptStack) = c('tmin','ppt')
-  return(tminPptStack)
-}
-
-# Function extract tmin, ppt to points and add the columns to the swd file
-
-extractTminPptToPts <- function(dateValue, ptFile){
-  # Prepare point file:
-  pts <- ptFile %>%
-    filter(date == dateValue) %>%
-    as.data.frame
-  spPts <- SpatialPointsDataFrame(coords = pts[,c('lon','lat')],
-                                  data = pts,
-                         proj4string = CRS(raster::projection(env.stack)))
-  # Get raster file:
-  rasterStack <- rasterPrepTminPpt(dateValue)
-  # Extract To pts
-  ptsEnv <- raster::extract(rasterStack, spPts)
-  ptsEnv <- cbind(spPts@data, ptsEnv) %>%
-    filter(!is.na(tmin))
-  return(ptsEnv)
-}
-
-# Make swds
-
-dateList <- vector('list', length = length(dates))
-
-for(i in 1:length(dateList)){
-  dateList[[i]] <- extractTminPptToPts(dates[i], swd)
-}
-
-swdComplete <- bind_rows(dateList)
-
-swdRUBL <- list(
-  all = swdComplete %>%
-    dplyr::filter(sp == 'rubl') %>%
-    mutate(count = ifelse(is.na(count), 1, count),
-           sp =  ifelse(count > 99, 'large',ifelse(
-             count > 19 & count <100, 'medium', 'small')
-           )),
-  bz = swdComplete %>%
-    dplyr::filter(sp == 'rubl', protocol == 'blitz') %>%
-    mutate(count = ifelse(is.na(count), 1, count),
-           sp =  ifelse(count > 99, 'large',ifelse(
-             count > 19 & count <100, 'medium', 'small')
-           )),
-  eb = swdComplete %>%
-    dplyr::filter(sp == 'rubl', protocol == 'ebird') %>%
-    mutate(count = ifelse(is.na(count), 1, count),
-           sp =  ifelse(count > 99, 'large',ifelse(
-             count > 19 & count <100, 'medium', 'small')
-           ))
-)
-
-saveRDS(swdRUBL, 'swdRUBL.RDS')
-
-swdBG <- filter(swdComplete, sp == 'bg') %>%
-  mutate(sp = 0)
-
-saveRDS(swdBG, 'swdBG.RDS')
-########################################################
-swdRUBL <- readRDS('swdRUBL.RDS')
-
-names(swdRUBL)
-
-for(i in 1:3){
-  swdRUBL[[i]] <- swdRUBL[[i]] %>%
-    mutate(lat = round(lat, 2),
-           lon = round(lon, 2),
-           week = week(as.Date(date)),
-           year = year(as.Date(date))) %>%
-    group_by(lat, lon, week, year) %>%
-    mutate(count = max(count),
-           tmin = min(tmin),
-           ppt = sum(ppt)
-           ) %>%
-    ungroup %>%
-    dplyr::select(-date) %>%
-    dplyr::select(sp:count, week, year, dev_hi:ppt) %>%
-    distinct
-}
-
-swdBG <- readRDS('swdBG.RDS') %>%
-  mutate(lat = round(lat, 2),
-         lon = round(lon, 2),
-         week = week(as.Date(date)),
-         year = year(as.Date(date))) %>%
-  group_by(lat, lon, week, year) %>%
-  mutate(tmin = min(tmin),
-         ppt = sum(ppt)
-  ) %>%
-  ungroup %>%
-  dplyr::select(-date) %>%
-  dplyr::select(sp:count, week, year, dev_hi:ppt) %>%
-  distinct
-
-########################################################
-
-# Function to prepare swd files:
-
-prepSWD <- function(inData){
-  swdIn <- inData
-  weeks <- 9:22
-  swdYrList <- vector('list',length = length(weeks))
-  names(swdYrList) <- paste0('w',weeks)
-  for(i in 1:length(years)){
-    flockSizes <- c('small', 'medium', 'large')
-    swdFSList <- vector('list', length = 3)
-    names(swdFSList) <- flockSizes
-    for(j in 1:length(flockSizes)){
-      swdPres <- swdIn %>%
-        dplyr::filter(sp == flockSizes[j],
-                      year == years[i]) %>%
-        dplyr::mutate(sp = 1,
-                      ll = paste(lat, lon, week, year, sep = ','))
-      swdAbs <- swdBG %>%
-        dplyr::filter(year == years[w]) %>%
-        mutate(ll = paste(lat, lon, week, year, sep = ',')) %>%
-        filter(!ll %in% swdPres$ll)
-      swdAbs$k <- kfold(swdAbs, k = 5)
-      swdPres$k <- kfold(swdPres, k = 5)
-      swdFSList[[j]] <- bind_rows(swdPres, swdAbs) %>%
-        dplyr::select(-c(ll))
-    }
-    swdYrList[[i]] <- swdFSList
-  }
-  return(swdYrList)
-}
-
-
-
-swd <- prepSWD(swdRUBL$all)
-
-
-prepSWD <- function(inData){
-  swdIn <- inData
-  swdYrList <- vector('list',length = 3)
-  years <- 2014:2016
-  names(swdYrList) <- paste0('y',years)
-  for(i in 1:length(years)){
-    flockSizes <- c('small', 'medium', 'large')
-    swdFSList <- vector('list', length = 3)
-    names(swdFSList) <- flockSizes
-    for(j in 1:length(flockSizes)){
-      swdPres <- swdIn %>%
-        dplyr::filter(sp == flockSizes[j],
-                      year == years[i]) %>%
-        dplyr::mutate(sp = 1,
-                      ll = paste(lat, lon, week, year, sep = ','))
-      swdAbs <- swdBG %>%
-        dplyr::filter(year == years[w]) %>%
-        mutate(ll = paste(lat, lon, week, year, sep = ',')) %>%
-        filter(!ll %in% swdPres$ll)
-      swdAbs$k <- kfold(swdAbs, k = 5)
-      swdPres$k <- kfold(swdPres, k = 5)
-      swdFSList[[j]] <- bind_rows(swdPres, swdAbs) %>%
-        dplyr::select(-c(ll))
-    }
-    swdYrList[[i]] <- swdFSList
-  }
-  return(swdYrList)
-}
-
-      
-#       swd[[i]] <- vector('list',length = 3)
-#       for(j in 1:3){
-#         swdBG$k <- kfold(swdBG, k = 5)
-#         swdFS <- swdRUBL[[i]] %>%
-#           dplyr::filter(sp == flockSizes[j]) %>%
-#           dplyr::mutate(sp = 1,
-#                         ll = paste(lat, lon, week, year, sep = ','))
-#         swdFS$k <- kfold(swdFS, k = 5)
-#         swd[[i]][[j]] <- rbind(swdFS,
-#                                swdBG %>%
-#                                  mutate(ll = paste(lat, lon, week, year, sep = ',')) %>%
-#                                  filter(!ll %in% swdFS$ll)
-#         ) %>%
-#           dplyr::select(-c(ll))
-#       }
-#       names(swd[[i]]) <- flockSizes
+# # Load environment data:
+# 
+# source(str_c(pathToSource, 'load_env.R'))
+# 
+# env.stack <- loadEnv(str_c(pathToFiles, 'lc_asc'))
+# 
+# # Remove tmin and precipitation:
+# 
+# env.stack <- env.stack[[c(1:7, 9:10, 12:15)]]
+# 
+# 
+# # Project pts and extract lcData:
+# 
+# extractLcToPts <- function(ptFile){
+#   spPts <- SpatialPoints(ptFile[,c('lon','lat')],
+#                 proj4string = CRS(raster::projection(env.stack)))
+#   ptsEnv <- raster::extract(env.stack, spPts) %>%
+#     as.data.frame(na.rm = TRUE)
+#   envOut <- cbind(dplyr::select(ptFile,sp:count), ptsEnv) %>%
+#     filter(!is.na(dev_hi))
+# }
+# 
+# swd <- bind_rows(extractLcToPts(rubl) %>%
+#                    mutate(count = as.numeric(count)),
+#                  extractLcToPts(bg))
+# 
+# #---------------------------------------------------------------------------------------------------*
+# # ---- PRECIPITATION AND MINIMUM TEMPERATURE ----
+# #---------------------------------------------------------------------------------------------------*
+# 
+# # Add tmin and ppt data for a given date to the table:
+# 
+# dates <- swd %>%
+#   select(date) %>%
+#   distinct %>%
+#   arrange(date) %>%
+#   .$date
+# 
+# # Function to get a stack of ppt and tmin rasters associated with a given date:
+# 
+# date <- '2014-03-01'
+# 
+# 
+# rasterPrepTminPpt <- function(date){
+#   # Get ppt and tmin rasters for given date:
+#   
+#   rasterDirTmin <- 'C:/Users/Brian/Desktop/rubl_summer_2016/minTempRasters/tmin_'
+#   rasterDirPPt <- 'C:/Users/Brian/Desktop/rubl_summer_2016/pptRasters/ppt_'
+#   
+#   raster('C:/Users/Brian/Desktop/rubl_summer_2016/minTempRasters/tmin_2014-03-22')
+#   
+#   tminR <- raster(paste0(rasterDirTmin, date))
+#   pptR <- raster(paste0(rasterDirPPt, date))
+#   
+#   # Create a raster stack of raster layers:
+#   
+#   tminPptStack = stack(tminR, pptR)
+#   
+#   # Add raster stack values to memory:
+#   
+#   values(tminPptStack) = getValues(tminPptStack)
+#   
+#   # Add projection information to the raster stack:
+#   
+#   newproj = CRS('+proj=longlat +datum=WGS84')
+#   
+#   projection(env.stack) = newproj
+#   names(tminPptStack) = c('tmin','ppt')
+#   return(tminPptStack)
+# }
+# 
+# # Function extract tmin, ppt to points and add the columns to the swd file
+# 
+# extractTminPptToPts <- function(dateValue, ptFile){
+#   # Prepare point file:
+#   pts <- ptFile %>%
+#     filter(date == dateValue) %>%
+#     as.data.frame
+#   spPts <- SpatialPointsDataFrame(coords = pts[,c('lon','lat')],
+#                                   data = pts,
+#                          proj4string = CRS(raster::projection(env.stack)))
+#   # Get raster file:
+#   rasterStack <- rasterPrepTminPpt(dateValue)
+#   # Extract To pts
+#   ptsEnv <- raster::extract(rasterStack, spPts)
+#   ptsEnv <- cbind(spPts@data, ptsEnv) %>%
+#     filter(!is.na(tmin))
+#   return(ptsEnv)
+# }
+# 
+# # Make swds
+# 
+# dateList <- vector('list', length = length(dates))
+# 
+# for(i in 1:length(dateList)){
+#   dateList[[i]] <- extractTminPptToPts(dates[i], swd)
+# }
+# 
+# swdComplete <- bind_rows(dateList)
+# 
+# swdRUBL <- list(
+#   all = swdComplete %>%
+#     dplyr::filter(sp == 'rubl') %>%
+#     mutate(count = ifelse(is.na(count), 1, count),
+#            sp =  ifelse(count > 99, 'large',ifelse(
+#              count > 19 & count <100, 'medium', 'small')
+#            )),
+#   bz = swdComplete %>%
+#     dplyr::filter(sp == 'rubl', protocol == 'blitz') %>%
+#     mutate(count = ifelse(is.na(count), 1, count),
+#            sp =  ifelse(count > 99, 'large',ifelse(
+#              count > 19 & count <100, 'medium', 'small')
+#            )),
+#   eb = swdComplete %>%
+#     dplyr::filter(sp == 'rubl', protocol == 'ebird') %>%
+#     mutate(count = ifelse(is.na(count), 1, count),
+#            sp =  ifelse(count > 99, 'large',ifelse(
+#              count > 19 & count <100, 'medium', 'small')
+#            ))
+# )
+# 
+# saveRDS(swdRUBL, 'swdRUBL.RDS')
+# 
+# swdBG <- filter(swdComplete, sp == 'bg') %>%
+#   mutate(sp = 0)
+# 
+# saveRDS(swdBG, 'swdBG.RDS')
+# ########################################################
+# swdRUBL <- readRDS('swdRUBL.RDS')
+# 
+# names(swdRUBL)
+# 
+# for(i in 1:3){
+#   swdRUBL[[i]] <- swdRUBL[[i]] %>%
+#     mutate(lat = round(lat, 2),
+#            lon = round(lon, 2),
+#            week = week(as.Date(date)),
+#            year = year(as.Date(date))) %>%
+#     group_by(lat, lon, week, year) %>%
+#     mutate(count = max(count),
+#            tmin = min(tmin),
+#            ppt = sum(ppt)
+#            ) %>%
+#     ungroup %>%
+#     dplyr::select(-date) %>%
+#     dplyr::select(sp:count, week, year, dev_hi:ppt) %>%
+#     distinct
+# }
+# 
+# swdBG <- readRDS('swdBG.RDS') %>%
+#   mutate(lat = round(lat, 2),
+#          lon = round(lon, 2),
+#          week = week(as.Date(date)),
+#          year = year(as.Date(date))) %>%
+#   group_by(lat, lon, week, year) %>%
+#   mutate(tmin = min(tmin),
+#          ppt = sum(ppt)
+#   ) %>%
+#   ungroup %>%
+#   dplyr::select(-date) %>%
+#   dplyr::select(sp:count, week, year, dev_hi:ppt) %>%
+#   distinct
+# 
+# ########################################################
+# 
+# # Function to prepare swd files:
+# 
+# prepSWD <- function(inData){
+#   swdIn <- inData
+#   weeks <- 9:22
+#   swdYrList <- vector('list',length = length(weeks))
+#   names(swdYrList) <- paste0('w',weeks)
+#   for(i in 1:length(years)){
+#     flockSizes <- c('small', 'medium', 'large')
+#     swdFSList <- vector('list', length = 3)
+#     names(swdFSList) <- flockSizes
+#     for(j in 1:length(flockSizes)){
+#       swdPres <- swdIn %>%
+#         dplyr::filter(sp == flockSizes[j],
+#                       year == years[i]) %>%
+#         dplyr::mutate(sp = 1,
+#                       ll = paste(lat, lon, week, year, sep = ','))
+#       swdAbs <- swdBG %>%
+#         dplyr::filter(year == years[w]) %>%
+#         mutate(ll = paste(lat, lon, week, year, sep = ',')) %>%
+#         filter(!ll %in% swdPres$ll)
+#       swdAbs$k <- kfold(swdAbs, k = 5)
+#       swdPres$k <- kfold(swdPres, k = 5)
+#       swdFSList[[j]] <- bind_rows(swdPres, swdAbs) %>%
+#         dplyr::select(-c(ll))
 #     }
+#     swdYrList[[i]] <- swdFSList
 #   }
-#   names(swd) <- c('all','bz','eb')
+#   return(swdYrList)
+# }
+# 
+# 
+# 
+# swd <- prepSWD(swdRUBL$all)
+# 
+# 
+# prepSWD <- function(inData){
+#   swdIn <- inData
+#   swdYrList <- vector('list',length = 3)
+#   years <- 2014:2016
+#   names(swdYrList) <- paste0('y',years)
+#   for(i in 1:length(years)){
+#     flockSizes <- c('small', 'medium', 'large')
+#     swdFSList <- vector('list', length = 3)
+#     names(swdFSList) <- flockSizes
+#     for(j in 1:length(flockSizes)){
+#       swdPres <- swdIn %>%
+#         dplyr::filter(sp == flockSizes[j],
+#                       year == years[i]) %>%
+#         dplyr::mutate(sp = 1,
+#                       ll = paste(lat, lon, week, year, sep = ','))
+#       swdAbs <- swdBG %>%
+#         dplyr::filter(year == years[w]) %>%
+#         mutate(ll = paste(lat, lon, week, year, sep = ',')) %>%
+#         filter(!ll %in% swdPres$ll)
+#       swdAbs$k <- kfold(swdAbs, k = 5)
+#       swdPres$k <- kfold(swdPres, k = 5)
+#       swdFSList[[j]] <- bind_rows(swdPres, swdAbs) %>%
+#         dplyr::select(-c(ll))
+#     }
+#     swdYrList[[i]] <- swdFSList
+#   }
+#   return(swdYrList)
+# }
+# 
+#       
+# #       swd[[i]] <- vector('list',length = 3)
+# #       for(j in 1:3){
+# #         swdBG$k <- kfold(swdBG, k = 5)
+# #         swdFS <- swdRUBL[[i]] %>%
+# #           dplyr::filter(sp == flockSizes[j]) %>%
+# #           dplyr::mutate(sp = 1,
+# #                         ll = paste(lat, lon, week, year, sep = ','))
+# #         swdFS$k <- kfold(swdFS, k = 5)
+# #         swd[[i]][[j]] <- rbind(swdFS,
+# #                                swdBG %>%
+# #                                  mutate(ll = paste(lat, lon, week, year, sep = ',')) %>%
+# #                                  filter(!ll %in% swdFS$ll)
+# #         ) %>%
+# #           dplyr::select(-c(ll))
+# #       }
+# #       names(swd[[i]]) <- flockSizes
+# #     }
+# #   }
+# #   names(swd) <- c('all','bz','eb')
+# #   return(swd)
+# # }
+# 
+# # swd <- prepSWD(swdRUBL$all)
+
+# Run model for a given value of K, observationClass, and flock size class:
+# 
+# swdForModel <- function(minFlockSize, maxFlockSize, 
+#                         years, protocolChoice = 'all'){
+#   swd <- prepSWD(minFlockSize,maxFlockSize, years, protocolChoice = 'all') %>%
+#     data.frame %>%
+#     mutate(tmin2 = scale(tmin^2)[,1],
+#            dev_hi = scale(dev_hi)[,1],
+#            dev_li = scale(dev_li)[,1],
+#            flood = scale(flood)[,1],
+#            forh = scale(forh)[,1],
+#            form = scale(form)[,1],
+#            grass = scale(grass)[,1],
+#            pasture = scale(pasture)[,1],
+#            rowcrop = scale(rowcrop)[,1],
+#            shrub = scale(shrub)[,1],
+#            upfor = scale(upfor)[,1],
+#            weth = scale(weth)[,1],
+#            wetw = scale(wetw)[,1],
+#            woodland = scale(woodland)[,1],
+#            ppt = scale(ppt)[,1],
+#            tmin = scale(tmin)[,1])
 #   return(swd)
 # }
 
-# swd <- prepSWD(swdRUBL$all)
-
-# Run model for a given value of K, observationClass, and flock size class:
-
-maxentRun <- function(swd1, flockSizeClass, kFold, beta.multiplier){
-  # Create input file of k fold::
-  max.in <- swd1[[flockSizeClass]] %>%
-    dplyr::filter(k != kFold) %>%
-    dplyr::select(-c(k, lon, lat, protocol, count, week, year)) %>%
-    data.frame
+maxentRun <- function(swd, betaMultiplier,
+                      kFold = 'noCrossValidate', excludeVariables = NULL){
+  if(!is.null(excludeVariables)){
+    swd <- swd %>%
+      dplyr::select(-one_of(excludeVariables))
+  }
+  swdAbsence <- swd %>%
+    dplyr::filter(pa == 0) #%>%
+    # dplyr::sample_n(10000)
+  # Create input file of k fold:
+  if(kFold != 'noCrossValidate'){
+    swdTrain <- swd %>%
+      dplyr::filter(k != kFold & pa == 1) %>%
+      bind_rows(swdAbsence) %>%
+      select(-k)
+  } else {
+    swdTrain <- swd %>%
+      dplyr::filter(pa == 1) %>%
+      bind_rows(swdAbsence) %>%
+      select(-k) 
+  }
+    # filter(pa > 0)
+  # swdTest <- swd %>%
+  #   dplyr::filter(k == kFold) %>%
+  #   select(-k)
   # Set model arguments
-  beta.r <- str_c('betamultiplier=', beta.multiplier)
-  mod.args <- c('nothreshold', 'nohinge', 'noproduct',#'noquadratic',
-               beta.r, 'addallsamplestobackground',
-               'writebackgroundpredictions','writeplotdata',
+  betaR <- str_c('betamultiplier=', betaMultiplier)
+  modArguments <- c('nothreshold', 'nohinge', 'noproduct','noquadratic',
+               betaR, 'addallsamplestobackground',
+               'writebackgroundpredictions',#'replicates=5','writeplotdata',
                'noautofeature','nooutputgrids',
                'maximumiterations=10000', 'verbose')
   # Run maxent model with training and background data:
-  maxentModel <- maxent(max.in[,-1], max.in[,1], args = mod.args)
-  return(list(swd = max.in, maxentModel = maxentModel))
+  maxentModel <- maxent(swdTrain[,-1], swdTrain[,1], args = modArguments)
+  # swdTest$predictions <- predict(maxentModel,
+  #                                swdTest %>%
+  #                                  dplyr::select(dev_hi:tmin))
+  # evaluationObject <- dismo::evaluate(p = swdTest %>%
+  #                                filter(pa > 0) %>%
+  #                                .$predictions,
+  #                              a = swdTest %>%
+  #                                filter(pa == 0) %>%
+  #                                .$predictions)
+  return(maxentModel)
 }
+
+maxentRunReduced <- function(swd, betaMultiplier,
+                             kFold = 'noCrossValidate', excludeVariables = NULL){
+  modelFull <- maxentRun(swd, betaMultiplier)
+  variablesToExclude <- getVariableContribution(modelFull) %>%
+    filter(contribution <= 1 & variable != 'tmin') %>%
+    .$variable
+  modelReduced <- maxentRun(swd, betaMultiplier, excludeVariables = variablesToExclude)
+  return(modelReduced)
+}
+# 
+# 
+# betaMultiplier = 3.5
+# swd = prepSWD(100, Inf, 2009:2011)
+# 
+# maxentRunReduced(swd, betaMultiplier)
+# 
+# head(swd)
+#                    
+# model <- maxentRun(prepSWD(100, Inf, 2009:2011), 3.5,
+#                    excludeVariables = variablesToRemove(model))
+# 
+# model
+# 
+# previousModel <- model
+# 
+# vars <- getVariableContribution(model)$variable
+
+# envBG <- prepSWD(100, Inf, 2009:2011) %>%
+#   tbl_df %>%
+#   filter(pa == 0) #%>%
+#   # select(one_of(vars))
+# 
+# cor(envBG$rowcrop, envBG$flood)
+
+getVariableContribution <- function(model){
+  modelResults <- model@results %>% data.frame
+  modelResults$variable <- row.names(modelResults)
+  names(modelResults) <- c('contribution','variable')
+  variableContribution <- modelResults %>%
+    mutate(includesContribution = str_detect(variable, 'contribution')) %>%
+    dplyr::filter(includesContribution == TRUE) %>%
+    select(-includesContribution) %>%
+    mutate(variable = str_replace_all(variable, '.contribution', ''))
+  return(variableContribution)  
+}
+
+variablesToRemove <- function(model){
+  getVariableContribution(model) %>%
+  filter(contribution < 1 & variable != 'tmin') %>%
+  .$variable
+}
+
+# maxentRun(prepSWD(100, Inf, 2009:2011),3.5, excludeVariables = variablesToRemove(model))
+
+
+
+readLambdaFile <- function(model){
+  lambdaData <- model@lambdas
+  tf <- tempfile()
+  writeLines(lambdaData, tf)
+  read.csv(tf, fill = TRUE, header = F) %>%
+    dplyr::select(variable = V1, lambda = V2)
+}
+
+
+
+#----------------------------------------------------------------------------*
+# Summary stats functions:
+#----------------------------------------------------------------------------*
+
+se <- function(x) {sd(x)/sqrt(length(x))}
+
+conf95 <- function(x) se(x)*1.96 
+
+#----------------------------------------------------------------------------*
+# Predict values at test locations:
+#----------------------------------------------------------------------------*
+
+modPredict <- function(swd, model, kFold){
+  # swd <- prepSWD(minFlockSize,maxFlockSize, years, protocolChoice = 'all') %>%
+  #   data.frame
+  # swdTrain <- swd %>%
+  #   dplyr::filter(k != kFold) %>%
+  #   select(-k)
+  swdAbsence <- swd %>%
+    filter(pa == 0) %>%
+    dplyr::sample_n(10000)
+  swdTest <- swd %>%
+    dplyr::filter(k == kFold & pa == 1) %>%
+    bind_rows(swdAbsence) %>%
+    select(-k) 
+  # Run model for training points:
+  # model <- maxentKrun(swd, kFold, betaMultiplier)
+  # Get presence and absence test points
+  swdTestPresence <- swdTest %>%
+    filter(pa == 1) %>%
+    dplyr::select(dev_hi:tmin2)
+  swdTestAbsence <- swdTest %>% 
+    filter(pa == 0) %>%
+    dplyr::select(dev_hi:tmin2)
+  presencePredictions <- predict(model, swdTestPresence,
+                                args=c('outputformat=raw'))
+  absencePredictions <- predict(model, swdTestAbsence,
+                               args=c('outputformat=raw'))
+  probsum <- sum(presencePredictions, absencePredictions)
+  list(
+    length(swdTestPresence), # Number of presence points
+    presencePredictions,     # Predictions at presence points
+    probsum                  # Summed probability at pres and abs points
+    )
+}
+
+#----------------------------------------------------------------------------*
+# Calculate AIC:
+#----------------------------------------------------------------------------*
+
+calcAIC <- function(swd, betaMultiplier) {
+  # Extract a  model:
+  model <- maxentRunReduced(swd, betaMultiplier)
+  # Extract lambdas file and convert to a data frame
+  lambdas <- model@lambdas
+  lambda.df <- data.frame(do.call('rbind', strsplit(lambdas,',',fixed=TRUE)))
+  # Determing the number of parameters that had a lambda of zero 
+  # Note: Using n.lz = Number of Lambdas that equals Zero
+  n.lz <- length(lambda.df[as.numeric(as.character(lambda.df[,2])) == 0,1])
+  # Calculate the number of model parameters
+  kn <- length(lambdas)- n.lz - 4
+  # Predict suitability:
+  presencePredictions <- predict(model,
+                                 swd %>% filter(pa == 1),
+                                 args=c('outputformat=raw'))
+  absencePredictions <- predict(model, 
+                                swd %>% filter(pa == 0),
+                                args=c('outputformat=raw'))
+  probsum <- sum(presencePredictions, absencePredictions)
+  # preds <- modPredict(swd, model, kFold)
+  # Sum probabilities of predicted values
+  # probsum <- preds[[3]]
+  # How many points?
+  n <- length(presencePredictions)
+  # Extract the raw probabilities at point locations
+  # pt.vals <- preds[[2]]
+  loglik <- sum(log(presencePredictions / probsum))
+  # Calculate the AICc
+  AICc <- -2*loglik + 2*kn + ((2*kn*(kn+1))/(n-kn-1))
+  # Output
+  df1 <- data.frame(nParm = kn, beta = betaMultiplier,AICc = AICc)
+  # colnames(df1) = c('beta','AICc')
+  return(df1)
+}
+
+#----------------------------------------------------------------------------*
+# Statistical table of AIC output for a given beta:
+#----------------------------------------------------------------------------*
+# 
+# AICstats = function(swd, betaMultiplier){
+#   outMat = data.frame(matrix(nrow = 5, ncol = 2))
+#   for (i in 1:5){
+#     outMat[i,] = calcAIC(swd, betaMultiplier, i)
+#   }
+#   df = data.frame(betaMultiplier, 
+#                   mean(outMat[,2]),
+#                   se(outMat[,2]),
+#                   min(outMat[,2]),
+#                   max(outMat[,2]))
+#   colnames(df) = c('beta','mean','se','min','max')
+#   df
+# }
+
+#----------------------------------------------------------------------------*
+# Function that assesses across beta values and output a table of results:
+#----------------------------------------------------------------------------*
+
+betaFinder <- function(swd, betaValues){
+  out <- data.frame(matrix(nrow = length(betaValues),ncol = 3))
+  for (i in 1:length(betaValues)){
+    out[i,] <- calcAIC(swd, betaValues[i])
+  }   
+  colnames(out) <- c('nparm', 'beta','AICc')
+  out
+}
+
+# betaFinder(prepSWD(1,19, 2009:2011, protocolChoice = 'all'),5)
+
+betaValues <- seq(0, 10, .1)
+
+betaSmall <- betaFinder(
+  prepSWD(1,19, 2009:2011, protocolChoice = 'all'),
+  betaValues
+)
+
+betaMedium <- betaFinder(
+  prepSWD(20,99, 2009:2011, protocolChoice = 'all'),
+  betaValues
+)
+
+betaLarge <- betaFinder(
+  prepSWD(100,Inf, 2009:2011, protocolChoice = 'all'),
+  betaValues
+)
+
+
+#----------------------------------------------------------------------------*
+# Get AUC values associated with test points
+#----------------------------------------------------------------------------*
+
+# beta, small beta = 2.7, aic = 14362.45, nparm = 8
+
+# beta, medium = 1.4, aic = 5525.057, nparm = 10
+
+# beta, large = 1.0, aic = 2599.788, nparm = 8
+
+bestModelSmall <- maxentRunReduced(
+  prepSWD(1, 19, 2009:2011),
+  betaMultiplier = 2.7
+)
+
+bestModelMedium  <- maxentRunReduced(
+  prepSWD(20, 99, 2009:2011),
+  betaMultiplier = 1.4
+)
+
+bestModelLarge <- maxentRunReduced(
+  prepSWD(100, Inf, 2009:2011),
+  betaMultiplier = 1
+)
+
+runMaxentAUC <- function(swd, bestModel, betaMultiplier, kFold){
+  # Get environmental variables to include from the best model:
+  variablesToInclude <- getVariableContribution(bestModel) %>%
+    .$variable
+  # Remove environmental variables not used in this model:
+  swdReduced <- swd %>%
+    select(pa, k) %>%
+    bind_cols(
+      swd %>% select(one_of(variablesToInclude))
+      )
+  # Make background, training, and test points:
+  swdAbsence <- swdReduced %>%
+    dplyr::filter(pa == 0)
+  swdTrain <- swdReduced %>%
+    dplyr::filter(k != kFold & pa == 1) %>%
+    bind_rows(swdAbsence) %>%
+    select(-k)
+  swdTest <- swdReduced %>%
+    dplyr::filter(k == kFold & pa == 1) %>%
+    bind_rows(swdAbsence) %>%
+    select(-k)
+  # Set model arguments
+  modArguments <- c('nothreshold', 'nohinge', 'noproduct','noquadratic',
+                    str_c('betamultiplier=', betaMultiplier),
+                    'addallsamplestobackground',
+                    'writebackgroundpredictions',
+                    'noautofeature','nooutputgrids',
+                    'maximumiterations=10000', 'verbose')
+  # Run maxent model with training and background data:
+  maxentModel <- maxent(swdTrain[,-1], swdTrain[,1], args = modArguments)
+  # Predict model values at test points:
+  swdTest$predictions <- predict(
+    maxentModel,
+    swdTest %>% dplyr::select(-pa)
+  )
+  # Evaluate model:
+  evaluationObject <- dismo::evaluate(p = swdTest %>%
+                                 filter(pa > 0) %>%
+                                 .$predictions,
+                               a = swdTest %>%
+                                 filter(pa == 0) %>%
+                                 .$predictions)
+  # Return data frame with auc and cor values:
+  data.frame(auc = evaluationObject@auc, 
+             cor = evaluationObject@cor,
+             row.names = NULL)
+}
+
+# Function to get summary stats from auc and cor:
+
+getAUC <- function(swd, bestModel, betaMultiplier){
+  # For loop runs maxent evaluation for each value of K
+  outMat <- matrix(nrow = 5, ncol = 2)
+  for(i in 1:5){
+    outMat[i,] <- runMaxentAUC(swd, bestModel, betaMultiplier, i) %>%
+      as.matrix
+  }
+  colnames(outMat) <- c('auc', 'cor')
+  outFrame <- data.frame(outMat) %>%
+    summarize(
+       meanAUC = mean(auc),
+       seAUC = se(auc),
+       meanCor = mean(cor),
+       seCor = se(cor)
+    )
+}
+
+# beta, small beta = 2.7, aic = 14362.45, nparm = 8
+
+
+summarySmall <- getAUC(
+  prepSWD(1, 19, 2009:2011),
+  bestModelSmall,
+  2.7
+)
+
+summaryMedium <- getAUC(
+  prepSWD(20, 99, 2009:2011),
+  bestModelMedium,
+  1.4
+)
+
+summaryLarge <- getAUC(
+  prepSWD(100, Inf, 2009:2011),
+  bestModelLarge,
+  1
+)
+
+
+
+#############################################################################################
+  
+
+
 
 # 
 
-observationClass = 'all'
-flockSizeClass = 'large'
-kFold = 3
-beta.multiplier = 2
 
-test14 <- maxentRun(swd$y2014, flockSizeClass, kFold, beta.multiplier)
-test14
+
+# Run maxent model with training and background data:
+maxentModel <- maxent(swdTrain[,-1], swdTrain[,1], args = modArguments)
+
+
+# evaluationObject <- dismo::evaluate(p = swdTest %>%
+#                                filter(pa > 0) %>%
+#                                .$predictions,
+#                              a = swdTest %>%
+#                                filter(pa == 0) %>%
+#                                .$predictions)
+
+modelOutList <- function(minFlockSize, maxFlockSize, years, 
+                         betaMultiplier, protocolChoice = 'all'){
+  swd <- prepSWD(minFlockSize,maxFlockSize, years, protocolChoice)
+  outList <- vector('list', 5)
+  for (i in 1:5){
+    outList[[i]] <- maxentRun(swd, betaMultiplier, i)
+  }
+  outList
+}
+
+
+
+
+maxentRun <- function(swd, betaMultiplier,
+                      kFold = 'noCrossValidate', excludeVariables = NULL)
+
+
+
+# Get auc value to evaluate models of each flock size class:
+
+evaluationListS <- vector('list', length =5)
+evaluationListM <- vector('list', length =5)
+evaluationListL <- vector('list', length =5)
+
+
+for(i in 1:5){
+  evaluationListS[[i]] <- maxentCrossValidation(1, 20, 2009:2011, 
+                                                i, betaMultiplier, protocolChoice = 'all')@auc
+  evaluationListM[[i]] <- maxentCrossValidation(21, 99, 2009:2011, 
+                                                i, betaMultiplier, protocolChoice = 'all')@auc
+  evaluationListL[[i]] <- maxentCrossValidation(100, Inf, 2009:2011, 
+                                    i, betaMultiplier, protocolChoice = 'all')@auc
+}
+
+aucFrame <- data.frame(
+  flockSize = c('S', 'M', 'L'),
+  meanAUC = c(
+    mean(unlist(evaluationListS)),
+    mean(unlist(evaluationListM)),
+    mean(unlist(evaluationListL))),
+  confidence = c(
+    sd(unlist(evaluationListS))/sqrt(5)*1.96,
+    sd(unlist(evaluationListM))/sqrt(5)*1.96,
+    sd(unlist(evaluationListL))/sqrt(5)*1.96)
+  )
+
+
+# Run model across k
+
+
+maxentRun <- function(minFlockSize, maxFlockSize, years, betaMultiplier, protocolChoice = 'all'){
+  # Create input file of k fold::
+  swd <- prepSWD(minFlockSize,maxFlockSize, years, protocolChoice) %>%
+    data.frame %>%
+    select(-k)
+  # Set model arguments
+  betaR <- str_c('betamultiplier=', betaMultiplier)
+  modArguments <- c('nothreshold', 'nohinge', #'noproduct','noquadratic',
+                    betaR, 'addallsamplestobackground',
+                    'writebackgroundpredictions',#'replicates=5','writeplotdata',
+                    'noautofeature','nooutputgrids',
+                    'maximumiterations=10000', 'verbose')
+  # Run maxent model with training and background data:
+  maxentModel <- maxent(swd[,-1], swd[,1], args = modArguments)
+  return(maxentModel)
+}
+
+smallFlockModel <- maxentRun(1, 19, 2009:2011, 1)
+
+mediumFlockModel <- maxentRun(20, 99, 2009:2011, 0)
+
+largeFlockModel <- maxentRun(99, Inf, 2009:2011, 0)
+
+# 
+
+minFlockSize = 90
+maxFlockSize = Inf
+years = 2009:2011
+kFold = 3
+betaR = 2
+protocolChoice = 'all'
+
+test14 <- maxentCrossValidation(minFlockSize, maxFlockSize, years, kFold, betaR, protocolChoice)
+
+modelEvaluate <- function(minFlockSize, maxFlockSize, years, protocolChoice = 'all'){
+  presenceLC <- prepSWD(minFlockSize,maxFlockSize, years, protocolChoice = 'all') %>%
+    filter(pa == 1) %>%
+    dplyr::select(dev_hi:tmin) %>%
+    as.matrix
+  absenceLC <- prepSWD(minFlockSize,maxFlockSize, years, protocolChoice = 'all') %>%
+    filter(pa == 0) %>%
+    dplyr::select(dev_hi:tmin) %>%
+    as.matrix
+  evaluate(presenceLC, absenceLC, test14[[2]])
+}
+
+slotNames(test14[[2]]$models)
+
+
+
+modelEvaluate(minFlockSize, maxFlockSize, years, protocolChoice = 'all')
+
+testEvaluate <- evaluate(
+  p = ,
+  a = prepSWD(minFlockSize,maxFlockSize, years, protocolChoice = 'all') %>%
+    filter(pa == 0) %>%
+    dplyr::select(dev_hi:tmin) %>%
+    as.matrix,
+  model = test14[[2]]
+)
+
+testPredict <- predict(test14$maxentModel, 
+        prepSWD(minFlockSize,maxFlockSize, years, protocolChoice = 'all') %>%
+          dplyr::filter(k == kFold) %>%
+          data.frame %>%
+          dplyr::select(dev_hi:tmin)
+)
+          
 
 test15<- maxentRun(swd$y2015, flockSizeClass, kFold, beta.multiplier)
 test15
