@@ -1,5 +1,10 @@
 # Summarize point data by raster cell
 
+
+# note: 
+# setwd('C:/Users/Brian/Desktop/gits/RUBL/rubl_winter/') # Helm
+# setwd('C:/Users/Default.Default-THINK/Desktop/gits/RUBL/rubl_winter') # Thinkpad
+
 library(sp)
 library(raster)
 library(dplyr)
@@ -7,6 +12,15 @@ library(stringr)
 library(dismo)
 
 options(stringsAsFactors = FALSE)
+
+# pathToRasterData <- 'C:/Users/Brian/Dropbox/rubl_12_15/'  # Helm
+# pathToRasterData <- '/Users/bsevans/Dropbox/rubl_12_15/'   # MacBook Air
+# pathToRasterData <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/' # Thinkpad
+
+
+# pathToEbirdListData <- 'C:/Users/Brian/Dropbox/eBirdListData.csv'   # Helm
+# pathToEbirdListData <- 'C:/Users/Default.Default-THINK/Dropbox/eBirdListData.csv' # ThinkPad
+# pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'   # MacBook Air
 
 #---------------------------------------------------------------------------------------------------*
 # ---- FUNCTIONS ----
@@ -141,21 +155,18 @@ downloadPPTRasterMonthly <- function(year){
               paste0('ppt', year),
               overwrite = TRUE)
 }
-
-years <- 2006:2016
-
-for(i in 1:length(years)){
-  downloadTminRasterMonthly(years[i])
-  downloadPPTRasterMonthly(years[i])
-}
-
+# 
+# years <- 2006:2016
+# 
+# for(i in 1:length(years)){
+#   downloadTminRasterMonthly(years[i])
+#   downloadPPTRasterMonthly(years[i])
+# }
 
 #---------------------------------------------------------------------------------------------------*
 # ---- GET CELL DATA AND SUMMARIZE SAMPLING EFFORT TO DATE AND CELL ----
 #---------------------------------------------------------------------------------------------------*
-# pathToRasterData <- 'C:/Users/Brian/Dropbox/rubl_12_15/'  # Helm
-# pathToRasterData <- '/Users/bsevans/Dropbox/rubl_12_15/'   # MacBook Air
-# pathToRasterData <- 'C:/Users/Default.Default-THINK/Dropbox/rubl_12_15/' # Thinkpad
+
 # Get raster data:
 
 rStack <- loadEnv(paste0(pathToRasterData, 'lc_asc'))
@@ -167,10 +178,6 @@ r <- rStack[[1]]
 projInfo = projection(r)
 
 # Get rusty blackbird data:
-
-# note: 
-# wd, helm =  'C:/Users/Brian/Desktop/gits/RUBL/rubl_winter/'
-# wd, thinkPad = 'C:/Users/Default.Default-THINK/Desktop/gits/RUBL/rubl_winter'
 
 rustyLists <- read.csv('rublEbird.csv') %>%
   tbl_df %>%
@@ -193,10 +200,6 @@ rustyXobservations <- read.csv('rublEbird.csv') %>%
   .$observationID
   
 # Get eBird list data:
-
-# pathToEbirdListData <- 'C:/Users/Brian/Dropbox/eBirdListData.csv'   # Helm
-# pathToEbirdListData <- 'C:/Users/Default.Default-THINK/Dropbox/eBirdListData.csv' # ThinkPad
-# pathToEbirdListData <- '/Users/bsevans/Dropbox/eBirdListData.csv'   # MacBook Air
 
 eBirdLists <- read.csv(pathToEbirdListData) %>%
   tbl_df %>%
@@ -259,8 +262,8 @@ for(i in 1:length(years)){
   samplingSubset <- eBirdSamplingEnv %>%
     dplyr::filter(year == years[i]) %>%
     dplyr::select(cellAddress, year, protocol, count, dev_hi:woodland) %>%
-    mutate(protocol = ifelse(
-      stringr::str_detect(protocol, 'Blitz'), 'blitz', 'eb')) %>%
+    # mutate(protocol = ifelse(
+    #   stringr::str_detect(protocol, 'Blitz'), 'blitz', 'eb')) %>%
     group_by(cellAddress, protocol) %>%
     dplyr::mutate(count = max(count)) %>%
     ungroup %>%
@@ -269,8 +272,8 @@ for(i in 1:length(years)){
   pptR <- raster(paste0(pathToRasterData, 'climateRasters/ppt',years[i]))
   tminR <- raster(paste0(pathToRasterData, 'climateRasters/tmin',years[i]))
   # Extract precip and temperature to points (by cell address):
-  samplingSubset$ppt <- extract(pptR, samplingSubset$cellAddress) #cbind(samplingSubset$lon, samplingSubset$lat))
-  samplingSubset$tmin <- extract(tminR, samplingSubset$cellAddress) #cbind(samplingSubset$lon, samplingSubset$lat))
+  samplingSubset$ppt <- raster::extract(pptR, samplingSubset$cellAddress) #cbind(samplingSubset$lon, samplingSubset$lat))
+  samplingSubset$tmin <- raster::extract(tminR, samplingSubset$cellAddress) #cbind(samplingSubset$lon, samplingSubset$lat))
   # Output list item, removing NA tmin and ppt (outside of extent)
   samplingByYearList[[i]] <- samplingSubset %>%
     dplyr::filter(!is.na(tmin), !is.na(ppt)) #%>%
@@ -288,36 +291,77 @@ swd <- bind_rows(samplingByYearList)
 #   )) %>%
 #   filter(!is.na(dev_hi))#, !is.na(effortDist))
 
-swdCombinedFun <- function(flockSizeMin, flockSizeMax){
-  bind_rows(samplingByYearList) %>%
-    mutate(
-      pa = ifelse(count >= flockSizeMin & count <= flockSizeMax, 1,
-                  ifelse(count > 0, 999, 0))) %>%
-    filter(pa != 999,
-           !is.na(dev_hi)) %>%
-    dplyr::select(-c(cellAddress))
-}
+# swdCombinedFun <- function(flockSizeMin, flockSizeMax){
+#   bind_rows(samplingByYearList) %>%
+#     mutate(
+#       pa = ifelse(count >= flockSizeMin & count <= flockSizeMax, 1,
+#                   ifelse(count > 0, 999, 0))) %>%
+#     filter(pa != 999,
+#            !is.na(dev_hi)) #%>%
+#     # dplyr::select(-c(cellAddress))
+# }
+
+samplingAcrossYears <- bind_rows(samplingByYearList)
 
 #---------------------------------------------------------------------------------------------------*
 # ---- ATTACH RUBL SAMPLES FOR A GIVEN CELL AND DATE ----
 #---------------------------------------------------------------------------------------------------*
 
 prepSWD <- function(minFlockSize,maxFlockSize, years, protocolChoice = 'all'){
-  paFrame <- swdCombinedFun(minFlockSize, maxFlockSize) %>%
-    filter(year %in% years)
+  swdBG <- samplingAcrossYears %>%
+    group_by(cellAddress, year) %>%
+    dplyr::mutate(count = max(count)) %>%
+    ungroup %>%
+    dplyr::select(cellAddress, year, count, dev_hi:tmin) %>%
+    dplyr::filter(count < 1, year %in% years) %>%
+    distinct %>%
+    dplyr::mutate(pa = 0) %>%
+    dplyr::select(pa, dev_hi:tmin)
+  if(protocolChoice == 'all'){
+    paFrame <- samplingAcrossYears %>%
+      dplyr::filter(year %in% years) %>%
+      group_by(cellAddress, year) %>%
+      dplyr::mutate(count = max(count)) %>%
+      ungroup %>%
+      dplyr::filter(count >= minFlockSize & count <= maxFlockSize) %>%
+      mutate(pa = 1) %>%
+      dplyr::select(pa, dev_hi:tmin) %>%
+      bind_rows(swdBG) %>%
+      mutate(tmin2 = tmin^2) %>%
+      distinct
+  }
   if(protocolChoice == 'eb') {
-    paFrame <- paFrame %>%
-      filter(!(protocol == 'blitz' & pa == 1))
+    paFrame <- samplingAcrossYears %>%
+      dplyr::filter(year %in% years,
+                    str_detect(protocol, 'Traveling Count')) %>%
+      group_by(cellAddress, year) %>%
+      dplyr::mutate(count = max(count)) %>%
+      ungroup %>%
+      dplyr::filter(count >= minFlockSize & count <= maxFlockSize) %>%
+      mutate(pa = 1) %>%
+      dplyr::select(pa, dev_hi:tmin) %>%
+      bind_rows(swdBG) %>%
+      mutate(tmin2 = tmin^2) %>%
+      distinct
   }
   if(protocolChoice == 'blitz'){
-    paFrame <- paFrame %>%
-      filter(!(protocol == 'eb' & pa == 1))
+    paFrame <- samplingAcrossYears %>%
+      dplyr::filter(year %in% years,
+                    str_detect(protocol, 'Blitz')) %>%
+      group_by(cellAddress, year) %>%
+      dplyr::mutate(count = max(count)) %>%
+      ungroup %>%
+      dplyr::filter(count >= minFlockSize & count <= maxFlockSize) %>%
+      mutate(pa = 1) %>%
+      dplyr::select(pa, dev_hi:tmin) %>%
+      bind_rows(swdBG) %>%
+      mutate(tmin2 = tmin^2)
   }
   # Add k to paFrame and return output
   return(
     paFrame %>%
-      select(pa, dev_hi:tmin) %>%
-      mutate(k = dismo::kfold(x = pa, k = 5, by = pa))
+      mutate(k = dismo::kfold(x = pa, k = 5, by = pa)) %>%
+      data.frame
   )
 }
 
