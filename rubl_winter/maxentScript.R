@@ -658,7 +658,117 @@ summaryLarge <- getAUC(
   1
 )
 
+# Make model predictions:
 
+rStack2009 <- rStack
+rStack2009[['tmin']] <- raster(paste0(pathToRasterData, 'climateRasters/tmin',2009))
+rStack2009[['tmin2']] <- rStack2009[['tmin']]^2
+rStack2009[['ppt']] <-  raster(paste0(pathToRasterData, 'climateRasters/tmin',2009))
+
+# For a given best model and year make logistic prediction:
+
+getLogisticPrediction <- function(bestModel, year){
+  # Add tmin and ppt for a given year:
+  rStack[['tmin']] <- raster(paste0(pathToRasterData, 'climateRasters/tmin',year))
+  rStack[['tmin2']] <- rStack2009[['tmin']]^2
+  rStack[['ppt']] <-  raster(paste0(pathToRasterData, 'climateRasters/tmin',year))
+  # Predict based on best model:
+  outRaster <- predict(bestModel,rStack,
+          args='outputformat=logistic', 
+          progress='text')
+  return(outRaster)
+}
+
+small2009 <- getLogisticPrediction(bestModelSmall, 2009)
+medium2009 <- getLogisticPrediction(bestModelMedium, 2009)
+large2009 <- getLogisticPrediction(bestModelLarge, 2009)
+
+plot(small2009)
+plot(medium2009)
+plot(large2009)
+
+# Next: k-fold for each model for getting error in predictions
+
+runMaxentK <- function(swd, bestModel, betaMultiplier, kFold){
+  # Get environmental variables to include from the best model:
+  variablesToInclude <- getVariableContribution(bestModel) %>%
+    .$variable
+  # Remove environmental variables not used in this model:
+  swdReduced <- swd %>%
+    select(pa, k) %>%
+    bind_cols(
+      swd %>% select(one_of(variablesToInclude))
+    )
+  # Make background, training, and test points:
+  swdAbsence <- swdReduced %>%
+    dplyr::filter(pa == 0)
+  swdTrain <- swdReduced %>%
+    dplyr::filter(k != kFold & pa == 1) %>%
+    bind_rows(swdAbsence) %>%
+    select(-k)
+  swdTest <- swdReduced %>%
+    dplyr::filter(k == kFold & pa == 1) %>%
+    bind_rows(swdAbsence) %>%
+    select(-k)
+  # Set model arguments
+  modArguments <- c('nothreshold', 'nohinge', 'noproduct','noquadratic',
+                    str_c('betamultiplier=', betaMultiplier),
+                    'addallsamplestobackground',
+                    'writebackgroundpredictions',
+                    'noautofeature','nooutputgrids',
+                    'maximumiterations=10000', 'verbose')
+  # Run maxent model with training and background data:
+  maxentModel <- maxent(swdTrain[,-1], swdTrain[,1], args = modArguments)
+  return(maxentModel)
+}
+
+swdSmall <-  prepSWD(1, 19, 2009:2011)
+swdMedium <- prepSWD(20, 99, 2009:2011)
+swdLarge <- prepSWD(100, Inf, 2009:2011)
+
+
+outListSmall <- vector('list', length = 5)
+outListMedium <- vector('list', length = 5)
+outListLarge <- vector('list', length = 5)
+
+for(i in 1:5){
+  outListSmall[[i]] <- runMaxentK(swdSmall, bestModelSmall, 2.7, i)
+  outListMedium[[i]] <- runMaxentK(swdMedium, bestModelMedium, 1.4, i)
+  outListLarge[[i]] <- runMaxentK(swdLarge, bestModelLarge, 1, i)
+}
+
+getSummaryStatsK <- function(outList, flockSize){
+  results <- outList@results %>% 
+    data.frame
+  results$stat <- row.names(results)
+  row.names(results) <- NULL
+  names(results) <- c('value', 'stat')
+  resultsFrame <- results %>%
+    filter(str_detect(stat,'Prevalence')|
+           str_detect(stat, 'Maximum.training.sensitivity.plus.')) %>%
+    filter(!str_detect(stat, '.cumulative'),
+           !str_detect(stat, 'omission'))
+  resultsFrame$stat <- c('prevalence', 'logThresh', 'area')
+  resultsFrame$flockSize <- flockSize
+  return(resultsFrame)
+}
+
+summaryListSmall <- vector('list', length = 5)
+summaryListMedium <- vector('list', length = 5)
+summaryListLarge <- vector('list', length = 5)
+
+for(i in 1:5){
+  summaryListSmall[[i]] <- getSummaryStatsK(outListSmall[[i]], 'small')
+  summaryListMedium[[i]] <- getSummaryStatsK(outListMedium[[i]],  'medium')
+  summaryListLarge[[i]] <- getSummaryStatsK(outListLarge[[i]], 'large')
+}
+
+bind_rows(summaryListSmall, summaryListMedium, summaryListLarge) %>%
+  group_by(flockSize, stat) %>%
+  summarize(meanValue = mean(value),
+            seValue = se(value),
+            minCi = meanValue - seValue * 1.96,
+            maxCi = meanValue + seValue * 1.96) 
 
 #############################################################################################
   
